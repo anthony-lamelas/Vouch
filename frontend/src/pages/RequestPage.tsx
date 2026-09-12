@@ -78,7 +78,7 @@ function RequestView({ r }: { r: RequestDetail }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-5 items-start">
         <div className="space-y-5 min-w-0">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
             <Panel title="Candidate">
               <dl>
                 <KV label="Name">

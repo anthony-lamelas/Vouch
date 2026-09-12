@@ -4,7 +4,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import Text, cast, func, literal, select
+from sqlalchemy import Text, cast, func, literal, or_, select
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 
 from app.api.deps import DB, User
@@ -22,7 +22,7 @@ from app.services.lifecycle import ACTIVE_STATUSES, Status
 
 router = APIRouter(prefix="/roles", tags=["roles"])
 
-STRONG_MATCH = 0.5
+STRONG_MATCH = 0.7
 
 
 def _counts(db: DB) -> tuple[dict[uuid.UUID, int], dict[uuid.UUID, int]]:
@@ -104,23 +104,21 @@ def list_candidates(
         company_set.update(tier_names)
     if company_set:
         stmt = stmt.where(
-            func.coalesce(
+            or_(
                 *[
                     Contact.experiences.op("@>")(literal([{"company": c}], type_=JSONB))
                     for c in sorted(company_set)
                 ]
-            ).is_(True)
-            if len(company_set) > 1
-            else Contact.experiences.op("@>")(
-                literal([{"company": next(iter(company_set))}], type_=JSONB)
             )
         )
     if schools:
-        conditions = [
-            Contact.education.op("@>")(literal([{"school": s}], type_=JSONB)) for s in schools
-        ]
         stmt = stmt.where(
-            func.coalesce(*conditions).is_(True) if len(conditions) > 1 else conditions[0]
+            or_(
+                *[
+                    Contact.education.op("@>")(literal([{"school": sc}], type_=JSONB))
+                    for sc in schools
+                ]
+            )
         )
     if skills:
         stmt = stmt.where(Contact.skills.op("&&")(cast(skills, ARRAY(Text))))

@@ -76,6 +76,29 @@ def test_company_and_skill_filters(client: TestClient) -> None:
     assert any(e["company"] == "Stripe" for e in detail["experiences"])
 
 
+def test_multi_company_filter_is_an_or(client: TestClient) -> None:
+    """Regression: the tier filter used coalesce() and only ever matched the first company."""
+    roles = client.get("/api/roles").json()
+    role = next(r for r in roles if r["title"] == "Software Engineer, Infrastructure")
+    page = client.get(
+        f"/api/roles/{role['id']}/candidates",
+        params={"company_tier": 1, "skills": ["Kubernetes"], "limit": 100},
+    ).json()
+    names = [c["contact"]["full_name"] for c in page["items"]]
+    assert "Priya Natarajan" in names  # Stripe + Google alum, not an Airbnb one
+    both = client.get(
+        f"/api/roles/{role['id']}/candidates",
+        params={"companies": ["Stripe", "Google"], "limit": 100},
+    ).json()["total"]
+    stripe = client.get(
+        f"/api/roles/{role['id']}/candidates", params={"companies": ["Stripe"], "limit": 100}
+    ).json()["total"]
+    google = client.get(
+        f"/api/roles/{role['id']}/candidates", params={"companies": ["Google"], "limit": 100}
+    ).json()["total"]
+    assert both >= max(stripe, google) and both > 0
+
+
 def test_tier_filter_only_returns_tier_one_alumni(client: TestClient) -> None:
     role = _first_role(client)
     page = client.get(
