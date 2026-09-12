@@ -1,0 +1,30 @@
+# Slack app manifest for VOUCH. Create the app at https://api.slack.com/apps -> "From a manifest",
+# paste this file, then replace REPLACE_WITH_APP_URL with the deployed origin (no trailing slash).
+display_information:
+  name: VOUCH
+  description: Warm referral requests from your recruiting team
+  background_color: "#1f2a26"
+features:
+  bot_user:
+    display_name: VOUCH
+    always_online: true
+oauth_config:
+  scopes:
+    bot:
+      - chat:write
+      - im:write
+      - im:history
+      - im:read
+      - users:read
+      - users:read.email
+settings:
+  event_subscriptions:
+    request_url: REPLACE_WITH_APP_URL/api/slack/events
+    bot_events:
+      - message.im
+  interactivity:
+    is_enabled: true
+    request_url: REPLACE_WITH_APP_URL/api/slack/interactions
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
