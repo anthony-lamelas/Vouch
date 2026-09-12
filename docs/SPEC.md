@@ -92,7 +92,7 @@ Consent and network-visibility controls, CSV upload, ATS integration, bonus payo
 
 ## 9. Demo script (3 minutes)
 1. Log in as the recruiter. Roles list shows Cognition's live postings with candidate counts.
-2. Open "Software Engineer, Infrastructure". Top candidates ranked by score with reasons. Filter to tier-1 companies and "Kubernetes".
+2. Open "Software Engineer, Infrastructure". Top candidates ranked by score with reasons. Filter to company "Stripe" and skill "Kubernetes": Priya Natarajan ranks near the top.
 3. Open a candidate. Two employees know them; the strongest edge is Bob (worked together at Stripe, 2019–2021). Click Request Referral.
 4. Switch to Slack. Bob's DM arrives with the drafted message and buttons. Click "I'll reach out", then "Contacted", then type "she's interested, wants to chat next week".
 5. Back in the app: pipeline shows Candidate interested, the timeline shows every step with actor and time, the Outreach panel shows the message that went out.

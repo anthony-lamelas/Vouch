@@ -333,7 +333,10 @@ function RequestReferral({
         <div className="min-w-0 text-[12.5px] text-ink-2">
           Strongest connection is{' '}
           <span className="font-medium text-ink">{strongest?.employee.full_name}</span>
-          {strongest?.shared_history ? ` (${strongest.shared_history.toLowerCase()})` : ''}.
+          {strongest?.shared_history
+            ? ` (${strongest.shared_history.charAt(0).toLowerCase() + strongest.shared_history.slice(1)})`
+            : ''}
+          .
         </div>
         <Button variant="primary" size="sm" onClick={() => setExpanded(true)}>
           Request referral
