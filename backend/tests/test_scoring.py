@@ -76,3 +76,25 @@ def test_match_score_reasons_are_explainable() -> None:
     assert signals["company"]["detail"] in {"Google", "Stripe"}
     assert signals["intro"]["detail"] == "Worked together at Stripe via Bob"
     assert 0.6 < result.score <= 1.0
+
+
+def test_casual_draft_reads_naturally() -> None:
+    from app.services.outreach import OutreachContext, draft_casual
+
+    ctx = OutreachContext(
+        contact_full_name="Priya Natarajan",
+        contact_title="Staff Infrastructure Engineer",
+        contact_company="Stripe",
+        role_title="Software Engineer, Infrastructure",
+        role_team="Core Engineering",
+        role_location="San Francisco",
+        role_url="https://x",
+        employee_first_name="Bob",
+        shared_history="Worked together at Stripe (2019-2024) on Payments",
+        fit_reasons=["4 of 8 required skills"],
+    )
+    text = draft_casual(ctx)
+    assert text.startswith(
+        "Hey Priya! Feels like ages since we worked together at Stripe (2019-2024)"
+    )
+    assert "Software Engineer, Infrastructure" in text

@@ -46,10 +46,27 @@ def _because(ctx: OutreachContext) -> str:
     return f" ({ctx.fit_reasons[0].lower()})"
 
 
+_HISTORY_REWRITES = (
+    ("Worked together at", "we worked together at"),
+    ("Both worked at", "we both worked at"),
+    ("Overlapped at", "we overlapped at"),
+    ("Both attended", "we both went to"),
+)
+
+
+def _casual_history(history: str) -> str:
+    """'Worked together at Stripe (2019-2024) on Payments' -> 'we worked together at Stripe ...'."""
+    for prefix, replacement in _HISTORY_REWRITES:
+        if history.startswith(prefix):
+            return replacement + history[len(prefix) :]
+    return history[:1].lower() + history[1:]
+
+
 def draft_casual(ctx: OutreachContext) -> str:
+    history = _casual_history(ctx.shared_history) if ctx.shared_history else ""
     opener = (
-        f"Hey {ctx.contact_first_name}! Feels like ages since {ctx.shared_history.lower()}."
-        if ctx.shared_history
+        f"Hey {ctx.contact_first_name}! Feels like ages since {history}."
+        if history
         else f"Hey {ctx.contact_first_name}! Hope things are good at {ctx.contact_company}."
     )
     return (
