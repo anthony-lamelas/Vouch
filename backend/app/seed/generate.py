@@ -102,6 +102,11 @@ def _title_for(rng: random.Random, family: str, max_seniority: str) -> tuple[str
     return rng.choice(options)
 
 
+def _person_name(fake: Faker) -> str:
+    """Plain first + last name (Faker's name() adds prefixes and suffixes like 'MD')."""
+    return f"{fake.first_name()} {fake.last_name()}"
+
+
 def _slug(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
@@ -278,10 +283,10 @@ def generate_employees(
                 "end": None,
             },
         ]
-        name = fake.name()
+        name = _person_name(fake)
         email = f"{_slug(name)}@cognition.ai"
         while email in used_emails:
-            name = fake.name()
+            name = _person_name(fake)
             email = f"{_slug(name)}@cognition.ai"
         used_emails.add(email)
         employees.append(
@@ -518,7 +523,7 @@ def generate_contacts(
         if connected_on is None:
             connected_on = _random_date(rng, SEED_TODAY - timedelta(days=365 * 6), SEED_TODAY)
 
-        name = fake.name()
+        name = _person_name(fake)
         url = f"https://www.linkedin.com/in/{_slug(name)}"
         n = 1
         while url in used_urls:
