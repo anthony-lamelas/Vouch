@@ -1,5 +1,5 @@
 # Slack app manifest for VOUCH. Create the app at https://api.slack.com/apps -> "From a manifest",
-# paste this file, then replace https://vouch-9pfl.onrender.com with the deployed origin (no trailing slash).
+# paste this file. The request URLs already point at the deployed Render service.
 display_information:
   name: VOUCH
   description: Warm referral requests from your recruiting team
