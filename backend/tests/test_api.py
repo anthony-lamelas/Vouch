@@ -140,12 +140,14 @@ def test_request_lifecycle_end_to_end(client: TestClient, db: Session) -> None:
     assert same["active_request"]["status"] == "requested"
 
     rid = req["id"]
-    for target in ("employee_accepted", "contacted", "candidate_interested"):
+    for target in ("employee_accepted", "candidate_interested"):
         r = client.post(f"/api/requests/{rid}/transition", json={"to_status": target})
         assert r.status_code == 200, r.text
         assert r.json()["status"] == target
 
-    illegal = client.post(f"/api/requests/{rid}/transition", json={"to_status": "contacted"})
+    illegal = client.post(
+        f"/api/requests/{rid}/transition", json={"to_status": "employee_accepted"}
+    )
     assert illegal.status_code == 409
 
     closed = client.post(
@@ -156,7 +158,6 @@ def test_request_lifecycle_end_to_end(client: TestClient, db: Session) -> None:
     assert [e["to_status"] for e in closed.json()["events"]] == [
         "requested",
         "employee_accepted",
-        "contacted",
         "candidate_interested",
         "closed",
     ]
@@ -192,7 +193,7 @@ def test_decline_reroutes_to_next_strongest_employee(client: TestClient, db: Ses
 
     r = client.post(
         f"/api/requests/{created['id']}/transition",
-        json={"to_status": "employee_declined", "reason": "dont_know_well"},
+        json={"to_status": "employee_declined"},
     )
     assert r.status_code == 200, r.text
     body = r.json()
@@ -261,9 +262,8 @@ def test_slack_free_text_reply_updates_status(client: TestClient, db: Session) -
     db.expire_all()
     db.refresh(req)
     assert req.status == "candidate_interested"
-    assert [e.to_status for e in req.events][-3:] == [
+    assert [e.to_status for e in req.events][-2:] == [
         "employee_accepted",
-        "contacted",
         "candidate_interested",
     ]
 

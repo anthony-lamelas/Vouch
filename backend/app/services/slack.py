@@ -16,26 +16,21 @@ from app.services.outreach import Drafts, OutreachContext
 
 BUTTONS: dict[str, tuple[Status, DeclineReason | None, str | None]] = {
     "vouch_accept": (Status.EMPLOYEE_ACCEPTED, None, "primary"),
-    "vouch_decline_unknown": (Status.EMPLOYEE_DECLINED, DeclineReason.DONT_KNOW_WELL, None),
-    "vouch_decline_fit": (Status.EMPLOYEE_DECLINED, DeclineReason.NOT_A_FIT, None),
-    "vouch_contacted": (Status.CONTACTED, None, "primary"),
+    "vouch_decline": (Status.EMPLOYEE_DECLINED, None, None),
     "vouch_interested": (Status.CANDIDATE_INTERESTED, None, "primary"),
     "vouch_candidate_declined": (Status.CANDIDATE_DECLINED, None, None),
     "vouch_no_response": (Status.NO_RESPONSE, None, None),
 }
 BUTTON_TEXT: dict[str, str] = {
-    "vouch_accept": "I'll reach out",
-    "vouch_decline_unknown": "Don't know them well",
-    "vouch_decline_fit": "Not a fit",
-    "vouch_contacted": "I've contacted them",
+    "vouch_accept": "Yes, I'll refer them",
+    "vouch_decline": "No, not this one",
     "vouch_interested": "They're interested",
     "vouch_candidate_declined": "They passed",
-    "vouch_no_response": "No response yet",
+    "vouch_no_response": "No reply yet",
 }
 _STATUS_TO_BUTTONS: dict[Status, list[str]] = {
     Status.EMPLOYEE_ACCEPTED: ["vouch_accept"],
-    Status.EMPLOYEE_DECLINED: ["vouch_decline_unknown", "vouch_decline_fit"],
-    Status.CONTACTED: ["vouch_contacted"],
+    Status.EMPLOYEE_DECLINED: ["vouch_decline"],
     Status.CANDIDATE_INTERESTED: ["vouch_interested"],
     Status.CANDIDATE_DECLINED: ["vouch_candidate_declined"],
     Status.NO_RESPONSE: ["vouch_no_response"],
@@ -53,7 +48,8 @@ class SendResult:
 
 def action_buttons(status: Status, request_id: str) -> list[dict[str, Any]]:
     elements: list[dict[str, Any]] = []
-    for target in next_employee_actions(status):
+    order = list(_STATUS_TO_BUTTONS)
+    for target in sorted(next_employee_actions(status), key=order.index):
         for action_id in _STATUS_TO_BUTTONS.get(target, []):
             _, _, style = BUTTONS[action_id]
             button: dict[str, Any] = {
@@ -84,26 +80,29 @@ def build_request_blocks(
     blocks: list[dict[str, Any]] = [
         {
             "type": "header",
-            "text": {"type": "plain_text", "text": f"Referral request: {ctx.role_title}"},
+            "text": {"type": "plain_text", "text": f"Referral ask: {ctx.role_title}"},
         },
         {
             "type": "section",
             "text": {
                 "type": "mrkdwn",
                 "text": (
-                    f"*{request.requested_by}* thinks *{ctx.contact_full_name}* "
-                    f"({ctx.contact_title} at {ctx.contact_company}) could be great for "
+                    f"*{request.requested_by}* would like to refer *{ctx.contact_full_name}* "
+                    f"({ctx.contact_title} at {ctx.contact_company}) for "
                     f"*<{ctx.role_url}|{ctx.role_title}>* · {ctx.role_team} · {ctx.role_location}."
-                    f"{history}"
+                    f"{history}\n\n*Would you be willing to reach out and refer them?*"
                 ),
             },
         },
-        {"type": "section", "text": {"type": "mrkdwn", "text": f"*Why they match*\n{reasons}"}},
+        {"type": "section", "text": {"type": "mrkdwn", "text": f"*Why they fit*\n{reasons}"}},
         {
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": f"*Suggested DM* (copy and send on LinkedIn)\n```{drafts.casual}```",
+                "text": (
+                    "*Suggested message* (copy and send however you normally talk)\n"
+                    f"```{drafts.casual}```"
+                ),
             },
         },
         {
@@ -112,7 +111,7 @@ def build_request_blocks(
                 {
                     "type": "mrkdwn",
                     "text": (
-                        f"Tap a button or just reply here in plain English. "
+                        f"Tap a button, or just reply here in plain English. "
                         f"<{app_url}/requests/{request.id}|View in VOUCH>"
                     ),
                 }

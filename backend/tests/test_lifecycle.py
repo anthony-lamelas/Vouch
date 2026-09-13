@@ -16,7 +16,6 @@ def test_happy_path_is_legal() -> None:
     path = [
         Status.REQUESTED,
         Status.EMPLOYEE_ACCEPTED,
-        Status.CONTACTED,
         Status.CANDIDATE_INTERESTED,
         Status.CLOSED,
     ]
@@ -28,9 +27,9 @@ def test_happy_path_is_legal() -> None:
     ("current", "target"),
     [
         (Status.CLOSED, Status.REQUESTED),
-        (Status.REQUESTED, Status.CONTACTED),
-        (Status.CANDIDATE_INTERESTED, Status.CONTACTED),
-        (Status.EMPLOYEE_ACCEPTED, Status.CANDIDATE_INTERESTED),
+        (Status.REQUESTED, Status.CANDIDATE_INTERESTED),
+        (Status.CANDIDATE_INTERESTED, Status.EMPLOYEE_ACCEPTED),
+        (Status.EMPLOYEE_ACCEPTED, Status.REQUESTED),
     ],
 )
 def test_illegal_transitions_raise(current: Status, target: Status) -> None:
@@ -52,8 +51,7 @@ def test_employee_actions_from_requested() -> None:
 def test_path_to_chains_intermediate_states() -> None:
     assert path_to(Status.REQUESTED, Status.CANDIDATE_INTERESTED) == [
         Status.EMPLOYEE_ACCEPTED,
-        Status.CONTACTED,
         Status.CANDIDATE_INTERESTED,
     ]
-    assert path_to(Status.CONTACTED, Status.EMPLOYEE_ACCEPTED) is None
+    assert path_to(Status.CANDIDATE_INTERESTED, Status.EMPLOYEE_ACCEPTED) is None
     assert path_to(Status.REQUESTED, Status.CLOSED) is None  # closing is the recruiter's

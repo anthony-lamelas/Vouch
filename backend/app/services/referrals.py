@@ -219,10 +219,12 @@ class ReferralService:
         req = self.get(request_id)
         current = Status(req.status)
         assert_transition(current, to_status)
-        if to_status == Status.EMPLOYEE_DECLINED and reason and not note:
-            note = (
-                "Doesn't know them well" if reason == DeclineReason.DONT_KNOW_WELL else "Not a fit"
-            )
+        if to_status == Status.EMPLOYEE_DECLINED and not note:
+            note = {
+                DeclineReason.DONT_KNOW_WELL: "Doesn't know them well",
+                DeclineReason.NOT_A_FIT: "Not a fit for this role",
+                None: "Declined to refer",
+            }[reason]
         req.status = to_status.value
         if to_status == Status.CLOSED:
             req.closed_outcome = note

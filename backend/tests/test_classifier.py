@@ -8,15 +8,15 @@ from app.services.lifecycle import DeclineReason, Status
     ("text", "current", "target", "reason"),
     [
         ("sure, I'll reach out today", Status.REQUESTED, Status.EMPLOYEE_ACCEPTED, None),
-        ("just messaged her on LinkedIn", Status.EMPLOYEE_ACCEPTED, Status.CONTACTED, None),
+        ("just messaged her on LinkedIn", Status.REQUESTED, Status.EMPLOYEE_ACCEPTED, None),
         (
             "she's interested, wants to chat next week",
-            Status.CONTACTED,
+            Status.EMPLOYEE_ACCEPTED,
             Status.CANDIDATE_INTERESTED,
             None,
         ),
-        ("he passed, happy where he is", Status.CONTACTED, Status.CANDIDATE_DECLINED, None),
-        ("no reply yet, I'll nudge again", Status.CONTACTED, Status.NO_RESPONSE, None),
+        ("he passed, happy where he is", Status.EMPLOYEE_ACCEPTED, Status.CANDIDATE_DECLINED, None),
+        ("no reply yet, I'll nudge again", Status.EMPLOYEE_ACCEPTED, Status.NO_RESPONSE, None),
         (
             "honestly I barely know him",
             Status.REQUESTED,

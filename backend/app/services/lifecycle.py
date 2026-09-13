@@ -10,7 +10,6 @@ class Status(StrEnum):
     REQUESTED = "requested"
     EMPLOYEE_ACCEPTED = "employee_accepted"
     EMPLOYEE_DECLINED = "employee_declined"
-    CONTACTED = "contacted"
     CANDIDATE_INTERESTED = "candidate_interested"
     CANDIDATE_DECLINED = "candidate_declined"
     NO_RESPONSE = "no_response"
@@ -22,13 +21,13 @@ class DeclineReason(StrEnum):
     NOT_A_FIT = "not_a_fit"
 
 
+# Saying yes means the employee will reach out; the outcome states record what happened next.
 TRANSITIONS: Final[dict[Status, frozenset[Status]]] = {
     Status.REQUESTED: frozenset(
         {Status.EMPLOYEE_ACCEPTED, Status.EMPLOYEE_DECLINED, Status.CLOSED}
     ),
     Status.EMPLOYEE_DECLINED: frozenset({Status.REQUESTED, Status.CLOSED}),
-    Status.EMPLOYEE_ACCEPTED: frozenset({Status.CONTACTED, Status.CLOSED}),
-    Status.CONTACTED: frozenset(
+    Status.EMPLOYEE_ACCEPTED: frozenset(
         {
             Status.CANDIDATE_INTERESTED,
             Status.CANDIDATE_DECLINED,
@@ -49,7 +48,6 @@ EMPLOYEE_SETTABLE: Final[frozenset[Status]] = frozenset(
     {
         Status.EMPLOYEE_ACCEPTED,
         Status.EMPLOYEE_DECLINED,
-        Status.CONTACTED,
         Status.CANDIDATE_INTERESTED,
         Status.CANDIDATE_DECLINED,
         Status.NO_RESPONSE,
@@ -59,14 +57,14 @@ RECRUITER_SETTABLE: Final[frozenset[Status]] = frozenset({Status.CLOSED})
 
 ACTIVE_STATUSES: Final[frozenset[Status]] = frozenset(s for s in Status if s != Status.CLOSED)
 
+# Labels are written from the recruiter's point of view.
 LABELS: Final[dict[Status, str]] = {
-    Status.REQUESTED: "Requested",
-    Status.EMPLOYEE_ACCEPTED: "Employee accepted",
-    Status.EMPLOYEE_DECLINED: "Employee declined",
-    Status.CONTACTED: "Contacted",
+    Status.REQUESTED: "Waiting on employee",
+    Status.EMPLOYEE_ACCEPTED: "Employee reaching out",
+    Status.EMPLOYEE_DECLINED: "Employee passed",
     Status.CANDIDATE_INTERESTED: "Candidate interested",
-    Status.CANDIDATE_DECLINED: "Candidate declined",
-    Status.NO_RESPONSE: "No response",
+    Status.CANDIDATE_DECLINED: "Candidate passed",
+    Status.NO_RESPONSE: "No reply yet",
     Status.CLOSED: "Closed",
 }
 

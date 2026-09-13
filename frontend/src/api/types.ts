@@ -2,7 +2,6 @@ export type Status =
   | 'requested'
   | 'employee_accepted'
   | 'employee_declined'
-  | 'contacted'
   | 'candidate_interested'
   | 'candidate_declined'
   | 'no_response'
