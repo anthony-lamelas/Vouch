@@ -1,0 +1,12 @@
+import { Link } from 'react-router-dom';
+import { EmptyState } from '../components/EmptyState';
+
+export function NotFoundPage() {
+  return (
+    <EmptyState title="There's nothing at this address">
+      <Link to="/roles" className="link">
+        Go to roles
+      </Link>
+    </EmptyState>
+  );
+}
