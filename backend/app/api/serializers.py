@@ -15,6 +15,7 @@ from app.schemas import (
     ConnectionOut,
     EmployeeBrief,
     EventOut,
+    LastMessageBrief,
     MessageOut,
     RequestDetail,
     RequestSummary,
@@ -72,6 +73,20 @@ def waiting_days(r: ReferralRequest, now: datetime | None = None) -> int | None:
     return ((now or datetime.now(UTC)) - since).days
 
 
+def _last_message(r: ReferralRequest) -> LastMessageBrief | None:
+    if not r.messages:
+        return None
+    m = r.messages[-1]
+    body = " ".join(m.body.split())
+    return LastMessageBrief(
+        excerpt=body[:180] + ("…" if len(body) > 180 else ""),
+        delivered=m.delivered,
+        error=m.error,
+        created_at=m.created_at,
+        employee_name=m.employee.full_name,
+    )
+
+
 def request_summary(r: ReferralRequest) -> RequestSummary:
     days = waiting_days(r)
     return RequestSummary(
@@ -87,6 +102,7 @@ def request_summary(r: ReferralRequest) -> RequestSummary:
         last_event_at=r.events[-1].created_at if r.events else None,
         days_waiting=days,
         stale=days is not None and days >= STALE_AFTER_DAYS,
+        last_message=_last_message(r),
     )
 
 

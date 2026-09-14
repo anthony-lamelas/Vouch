@@ -174,6 +174,14 @@ export interface MessageOut {
   employee: EmployeeBrief;
 }
 
+export interface LastMessageBrief {
+  excerpt: string;
+  delivered: boolean;
+  error: string | null;
+  created_at: string;
+  employee_name: string;
+}
+
 export interface RequestSummary {
   id: string;
   status: Status;
@@ -188,6 +196,7 @@ export interface RequestSummary {
   days_waiting: number | null;
   stale: boolean;
   is_mine: boolean;
+  last_message: LastMessageBrief | null;
 }
 
 export interface RequestDetail extends RequestSummary {
@@ -216,14 +225,6 @@ export interface TransitionIn {
   to_status: Status;
   note?: string | null;
   reason?: DeclineReason | null;
-}
-
-export interface OutreachItem {
-  message: MessageOut;
-  request_id: string;
-  request_status: Status;
-  contact: ContactBrief;
-  role: RoleBrief;
 }
 
 export interface TieredName {

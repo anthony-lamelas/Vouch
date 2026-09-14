@@ -5,7 +5,6 @@ import { Wordmark } from '../components/Wordmark';
 const NAV = [
   { to: '/roles', label: 'Roles' },
   { to: '/pipeline', label: 'Pipeline' },
-  { to: '/outreach', label: 'Outreach' },
 ];
 
 export function AppShell() {
