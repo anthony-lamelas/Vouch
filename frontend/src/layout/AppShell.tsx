@@ -55,13 +55,16 @@ export function AppShell() {
   return (
     <div className="flex min-h-screen bg-canvas">
       <aside className="sticky top-0 flex h-screen w-[232px] shrink-0 flex-col bg-paper px-3 pb-3 pt-4">
-        <NavLink
-          to="/roles"
-          className="flex h-7 items-center rounded-[6px] px-2"
-          aria-label="VOUCH home"
-        >
-          <Wordmark />
-        </NavLink>
+        <div className="flex items-center justify-between">
+          <NavLink
+            to="/roles"
+            className="flex h-7 items-center rounded-[6px] px-2"
+            aria-label="VOUCH home"
+          >
+            <Wordmark />
+          </NavLink>
+          <ThemeToggle />
+        </div>
 
         <nav aria-label="Primary" className="mt-4 flex flex-col gap-0.5">
           {NAV.map(({ to, label, Icon }) => (
@@ -119,7 +122,6 @@ export function AppShell() {
           >
             {me.data?.name ?? user?.email}
           </span>
-          <ThemeToggle />
           <Button
             variant="ghost"
             size="sm"
