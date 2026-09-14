@@ -77,17 +77,10 @@ def build_request_blocks(
 ) -> list[dict[str, Any]]:
     blocks: list[dict[str, Any]] = [
         {
-            "type": "header",
-            "text": {"type": "plain_text", "text": f"Referral Request: {ctx.role_title}"},
-        },
-        {
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": (
-                    f"*{requested_by_name or request.requested_by}* · "
-                    f"*<{ctx.role_url}|{ctx.role_title}>*\n\n{drafts.ask}"
-                ),
+                "text": (f"*Referral Request: <{ctx.role_url}|{ctx.role_title}>*\n\n{drafts.ask}"),
             },
         },
     ]
