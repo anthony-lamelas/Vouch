@@ -23,8 +23,8 @@ system (sidebar, density, grouped lists). Condensed to what the app uses.
 | State | Background | Text | Dot |
 |---|---|---|---|
 | Waiting on employee | #FFF4D6 | #8A5A00 | #E0A100 |
-| Employee reached out | #E4EDFF | #1D4ED8 | #266DF0 |
-| Candidate interested | #E3F6EA | #14683D | #22A06B |
-| Employee / candidate passed | #FCE8E8 | #A32D2D | #D64545 |
+| Employee reached out | #E4EEF8 | #1E5A94 | #3D84C9 |
+| Candidate interested | #E0F2EC | #176B52 | #2A9D7C |
+| Employee / candidate passed | #FBE9E4 | #A8402F | #D4634C |
 | Closed | #EEEFF1 | #505967 | #8F99A8 |
 | Needs you (band) | #FFF1D6 | #7A4B00 | — |
