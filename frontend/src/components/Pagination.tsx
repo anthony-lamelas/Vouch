@@ -14,11 +14,11 @@ export function Pagination({
   onPage: (offset: number) => void;
   noun?: string;
 }) {
-  if (total === 0) return null;
+  if (total <= limit) return null;
   const from = offset + 1;
   const to = Math.min(offset + limit, total);
   return (
-    <div className="flex items-center justify-between gap-4 py-3 text-[12.5px] text-muted tnum">
+    <div className="flex items-center justify-between gap-4 py-3 text-[13.5px] text-muted tnum">
       <span>
         {formatCount(from)}–{formatCount(to)} of {formatCount(total)} {noun}
       </span>

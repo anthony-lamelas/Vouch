@@ -5,7 +5,7 @@ export function Drawer({
   onClose,
   title,
   children,
-  width = 560,
+  width = 600,
 }: {
   open: boolean;
   onClose: () => void;
@@ -40,7 +40,7 @@ export function Drawer({
         type="button"
         aria-label="Close panel"
         onClick={onClose}
-        className="absolute inset-0 bg-ink/25 cursor-default"
+        className="absolute inset-0 cursor-default bg-ink/20"
         tabIndex={-1}
       />
       <div
@@ -50,7 +50,7 @@ export function Drawer({
         aria-label={title}
         tabIndex={-1}
         style={{ width: `min(${width}px, 92vw)` }}
-        className="animate-drawer-in absolute right-0 top-0 h-full bg-surface shadow-drawer outline-none flex flex-col"
+        className="animate-drawer-in absolute right-0 top-0 flex h-full flex-col rounded-l-drawer border-l border-line bg-surface shadow-drawer outline-none"
       >
         {children}
       </div>

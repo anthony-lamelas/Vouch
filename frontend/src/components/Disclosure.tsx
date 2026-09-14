@@ -4,21 +4,23 @@ export function Disclosure({
   summary,
   children,
   defaultOpen = false,
+  className = '',
 }: {
-  summary: string;
+  summary: ReactNode;
   children: ReactNode;
   defaultOpen?: boolean;
+  className?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const id = useId();
   return (
-    <div>
+    <div className={className}>
       <button
         type="button"
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-2 hover:text-ink rounded"
+        className="inline-flex items-center gap-1.5 rounded-[2px] text-[14px] font-medium text-ink-2 hover:text-ink"
       >
         <svg
           width="10"
@@ -32,7 +34,7 @@ export function Disclosure({
         {summary}
       </button>
       {open ? (
-        <div id={id} className="mt-3">
+        <div id={id} className="mt-2.5">
           {children}
         </div>
       ) : null}

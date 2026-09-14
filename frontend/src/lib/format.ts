@@ -71,6 +71,11 @@ export function plural(n: number, one: string, many = `${one}s`): string {
   return `${formatCount(n)} ${n === 1 ? one : many}`;
 }
 
+/** "Bob Rivera" becomes "Bob"; used wherever the UI talks about a person casually. */
+export function firstName(fullName: string): string {
+  return fullName.trim().split(/\s+/)[0] ?? fullName;
+}
+
 export function titleCase(s: string): string {
   return s
     .split('_')

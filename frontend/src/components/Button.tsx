@@ -5,15 +5,18 @@ type Size = 'sm' | 'md';
 
 const VARIANT: Record<Variant, string> = {
   primary:
-    'bg-accent text-white border-accent hover:bg-accent-hover hover:border-accent-hover disabled:bg-faint disabled:border-faint',
-  secondary: 'bg-surface text-ink border-line-2 hover:bg-ground disabled:text-faint',
-  ghost: 'bg-transparent text-ink-2 border-transparent hover:bg-raised disabled:text-faint',
-  danger: 'bg-surface text-neg border-neg/40 hover:bg-neg-soft disabled:text-faint',
+    'bg-spruce text-surface border-spruce hover:bg-spruce-hover hover:border-spruce-hover disabled:bg-muted disabled:border-muted',
+  secondary:
+    'bg-surface text-ink border-line-strong hover:border-ink-2 disabled:text-muted disabled:hover:border-line-strong',
+  ghost:
+    'bg-transparent text-ink-2 border-transparent hover:bg-neutral-soft hover:text-ink disabled:text-muted disabled:hover:bg-transparent',
+  danger:
+    'bg-surface text-neg border-line-strong hover:border-neg disabled:text-muted disabled:hover:border-line-strong',
 };
 
 const SIZE: Record<Size, string> = {
-  sm: 'h-7 px-2.5 text-[12px]',
-  md: 'h-8 px-3 text-[13px]',
+  sm: 'h-7 px-2.5 text-[13px]',
+  md: 'h-8 px-3 text-[14px]',
 };
 
 export function Button({
@@ -26,7 +29,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded border font-medium transition-colors disabled:cursor-not-allowed ${VARIANT[variant]} ${SIZE[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-control border font-medium transition-colors ${VARIANT[variant]} ${SIZE[size]} ${className}`}
       {...rest}
     />
   );

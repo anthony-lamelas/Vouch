@@ -38,36 +38,30 @@ export function LoginPage() {
     try {
       await signIn(email.trim(), password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign-in failed');
+      setError(
+        err instanceof Error
+          ? `${err.message}. Check the address and password, then try again.`
+          : 'Sign-in failed. Try again.',
+      );
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="min-h-screen grid place-items-center bg-ground px-4">
-      <div className="w-full max-w-[380px]">
-        <div className="mb-6">
-          <Wordmark size="lg" />
-          <p className="mt-2 text-muted">Referral sourcing for Cognition recruiters.</p>
-        </div>
-        <form
-          onSubmit={(e) => void onSubmit(e)}
-          className="rounded-md border border-line bg-surface p-5 space-y-4"
-          noValidate
-        >
+    <div className="grid min-h-screen place-items-center bg-canvas px-6">
+      <div className="w-full max-w-[320px]">
+        <Wordmark size="lg" />
+        <p className="mt-2 text-[15px] text-ink-2">Warm referrals from your team's network.</p>
+        <form onSubmit={(e) => void onSubmit(e)} className="mt-8 space-y-4" noValidate>
           {!configured ? (
-            <div
-              role="alert"
-              className="rounded border border-neg/30 bg-neg-soft px-3 py-2 text-[12.5px] text-neg"
-            >
-              Sign-in isn&apos;t configured: the API did not return Supabase settings from{' '}
-              <code>/api/config</code>. Set <code>AUTH_DISABLED=true</code> locally or configure
-              Supabase on the server.
-            </div>
+            <p role="alert" className="text-[13.5px] text-neg">
+              Sign-in is not configured: the API did not return Supabase settings. Set
+              AUTH_DISABLED=true locally or configure Supabase on the server.
+            </p>
           ) : null}
           <label className="block">
-            <span className="block text-[12.5px] font-medium text-ink-2 mb-1">Email</span>
+            <span className="mb-1 block text-[13.5px] font-medium text-ink-2">Email</span>
             <input
               type="email"
               autoComplete="username"
@@ -79,7 +73,7 @@ export function LoginPage() {
             />
           </label>
           <label className="block">
-            <span className="block text-[12.5px] font-medium text-ink-2 mb-1">Password</span>
+            <span className="mb-1 block text-[13.5px] font-medium text-ink-2">Password</span>
             <input
               type="password"
               autoComplete="current-password"
@@ -91,12 +85,12 @@ export function LoginPage() {
             />
           </label>
           {error ? (
-            <p role="alert" className="text-[12.5px] text-neg">
+            <p role="alert" className="text-[13.5px] text-neg">
               {error}
             </p>
           ) : null}
           <Button type="submit" variant="primary" className="w-full" disabled={!configured || busy}>
-            {busy ? 'Signing in…' : 'Sign in'}
+            {busy ? 'Signing in' : 'Sign in'}
           </Button>
         </form>
       </div>

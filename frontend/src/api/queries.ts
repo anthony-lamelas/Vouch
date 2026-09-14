@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
+  AskPreviewIn,
+  AskPreviewOut,
   MeOut,
   CandidatePage,
   ContactDetail,
@@ -26,6 +28,7 @@ export const keys = {
   stats: ['stats'] as const,
   requests: (params: RequestListParams) => ['requests', params] as const,
   request: (id: string) => ['requests', id] as const,
+  preview: (body: AskPreviewIn) => ['preview', body] as const,
 };
 
 export function useMe() {
@@ -56,7 +59,6 @@ export function useCandidates(roleId: string, filters: CandidateFilters) {
           skills: filters.skills,
           company_tier: filters.companyTier,
           q: filters.q,
-          min_score: filters.minScore,
           limit: filters.limit,
           offset: filters.offset,
         },
@@ -112,6 +114,16 @@ export function useRequest(id: string) {
   return useQuery({
     queryKey: keys.request(id),
     queryFn: () => api.get<RequestDetail>(`/requests/${id}`),
+  });
+}
+
+/** Drafts the message an employee would receive. Disabled until a body is supplied. */
+export function useAskPreview(body: AskPreviewIn | null) {
+  return useQuery({
+    queryKey: keys.preview(body ?? { contact_id: '', role_id: '' }),
+    queryFn: () => api.post<AskPreviewOut>('/requests/preview', body),
+    enabled: Boolean(body),
+    staleTime: 60_000,
   });
 }
 

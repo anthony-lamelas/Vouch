@@ -3,7 +3,7 @@ import { EmptyState } from '../components/EmptyState';
 
 export function NotFoundPage() {
   return (
-    <EmptyState title="There's nothing at this address">
+    <EmptyState title="There is nothing at this address">
       <Link to="/roles" className="link">
         Go to roles
       </Link>

@@ -1,66 +1,17 @@
 import { useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useRequests, useStats } from '../api/queries';
-import type { Status } from '../api/types';
+import { useRequests } from '../api/queries';
+import type { RequestSummary, Status } from '../api/types';
+import { Button } from '../components/Button';
+import { RemovableChip } from '../components/Chip';
+import { DeliveryCheck } from '../components/DeliveryMark';
 import { EmptyState, ErrorState, TableSkeleton } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
 import { Segmented } from '../components/Segmented';
 import { StatusPill } from '../components/StatusPill';
 import { formatCount, formatRelative } from '../lib/format';
-import { STATUS_LABELS, STATUS_ORDER, isStatus } from '../lib/status';
-
-function Funnel({
-  selected,
-  onSelect,
-}: {
-  selected: Status[];
-  onSelect: (s: Status | null) => void;
-}) {
-  const stats = useStats();
-  const counts = new Map<Status, number>();
-  for (const c of stats.data?.by_status ?? []) counts.set(c.status, c.count);
-  const total = stats.data?.requests_total ?? 0;
-  const allActive = selected.length === 0;
-  const cell = (active: boolean, dim = false) =>
-    `rounded border px-2.5 py-1.5 text-left transition-colors ${
-      active ? 'border-ink bg-surface' : 'border-line bg-surface hover:border-line-2'
-    } ${dim ? 'opacity-60' : ''}`;
-  return (
-    <div className="flex flex-wrap items-stretch gap-1" role="group" aria-label="Filter by status">
-      <button
-        type="button"
-        aria-pressed={allActive}
-        onClick={() => onSelect(null)}
-        className={cell(allActive)}
-      >
-        <span className="block text-[11.5px] text-muted">All</span>
-        <span className="block text-[15px] font-semibold tnum leading-tight">
-          {formatCount(total)}
-        </span>
-      </button>
-      {STATUS_ORDER.map((s) => {
-        const active = selected.includes(s);
-        const n = counts.get(s) ?? 0;
-        return (
-          <button
-            key={s}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onSelect(s)}
-            className={cell(active, n === 0 && !active)}
-          >
-            <span className="block text-[11.5px] text-muted whitespace-nowrap">
-              {STATUS_LABELS[s]}
-            </span>
-            <span className="block text-[15px] font-semibold tnum leading-tight">
-              {formatCount(n)}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+import { groupRequests } from '../lib/pipelineGroups';
+import { STATUS_LABELS, isStatus } from '../lib/status';
 
 export function PipelinePage() {
   const [params, setParams] = useSearchParams();
@@ -77,175 +28,193 @@ export function PipelinePage() {
     mine: scope === 'mine' || undefined,
   });
 
-  const rows = useMemo(
-    () =>
-      [...(requests.data?.items ?? [])].sort(
-        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
-      ),
-    [requests.data],
+  const groups = useMemo(
+    () => groupRequests(requests.data?.items ?? [], { hideClosed: activeOnly }),
+    [requests.data, activeOnly],
   );
+  const shown = groups.reduce((n, g) => n + g.items.length, 0);
 
-  const apply = (statuses: Status[], hideClosed: boolean, nextScope: 'mine' | 'all' = scope) => {
-    const next = new URLSearchParams();
-    for (const x of statuses) next.append('status', x);
-    if (hideClosed) next.set('active_only', '1');
-    if (roleId) next.set('role_id', roleId);
-    next.set('scope', nextScope);
-    setParams(next, { replace: true });
+  const apply = (next: {
+    statuses?: Status[];
+    hideClosed?: boolean;
+    scope?: 'mine' | 'all';
+    roleId?: string | undefined;
+  }) => {
+    const p = new URLSearchParams();
+    for (const x of next.statuses ?? selected) p.append('status', x);
+    if (next.hideClosed ?? activeOnly) p.set('active_only', '1');
+    const rid = 'roleId' in next ? next.roleId : roleId;
+    if (rid) p.set('role_id', rid);
+    p.set('scope', next.scope ?? scope);
+    setParams(p, { replace: true });
   };
 
-  const setStatus = (s: Status | null) => {
-    if (!s) {
-      apply([], activeOnly);
-      return;
-    }
-    apply(selected.includes(s) ? selected.filter((x) => x !== s) : [...selected, s], activeOnly);
-  };
+  const filtered = selected.length > 0 || Boolean(roleId);
+  const open = (id: string) => navigate(`/requests/${id}`);
 
   return (
     <div>
       <PageHeader
         title="Pipeline"
-        subtitle={
+        meta={
           requests.data
-            ? `${formatCount(requests.data.total)} ${requests.data.total === 1 ? 'request' : 'requests'}${
-                selected.length ? ' in the selected statuses' : ''
+            ? `${formatCount(shown)} ${shown === 1 ? 'request' : 'requests'}${
+                scope === 'mine' ? ' you asked for' : ''
               }`
-            : ' '
+            : ' '
         }
       >
         <Segmented
           label="Request scope"
           value={scope}
-          onChange={(next) => apply(selected, activeOnly, next)}
+          onChange={(next) => apply({ scope: next })}
           options={[
             { value: 'mine', label: 'My requests' },
             { value: 'all', label: 'All requests' },
           ]}
         />
-        <label className="inline-flex items-center gap-2 text-[12.5px] text-ink-2">
+        <label className="inline-flex h-8 items-center gap-2 text-[13.5px] text-ink-2">
           <input
             type="checkbox"
-            className="accent-accent"
+            className="accent-spruce"
             checked={activeOnly}
-            onChange={(e) => apply(selected, e.target.checked)}
+            onChange={(e) => apply({ hideClosed: e.target.checked })}
           />
           Hide closed
         </label>
-        {roleId ? (
-          <Link
-            to={`/roles/${roleId}`}
-            className="link text-[12.5px]"
-            title="Showing one role's requests"
-          >
-            Filtered to one role
-          </Link>
-        ) : null}
       </PageHeader>
 
-      <div className="mb-4">
-        <Funnel selected={selected} onSelect={setStatus} />
-      </div>
+      {filtered ? (
+        <div className="mb-4 flex flex-wrap items-center gap-1.5 text-[13.5px] text-muted">
+          <span>Filtered:</span>
+          {selected.map((s) => (
+            <RemovableChip
+              key={s}
+              label={STATUS_LABELS[s]}
+              onRemove={() => apply({ statuses: selected.filter((x) => x !== s) })}
+            />
+          ))}
+          {roleId ? (
+            <RemovableChip label="One role" onRemove={() => apply({ roleId: undefined })} />
+          ) : null}
+        </div>
+      ) : null}
 
       {requests.isPending ? <TableSkeleton rows={6} cols={6} /> : null}
       {requests.isError ? (
         <ErrorState title="Couldn't load requests" error={requests.error} />
       ) : null}
-      {requests.data && rows.length === 0 ? (
-        <EmptyState title="No requests here">
-          {selected.length || activeOnly
-            ? 'Nothing matches these filters. Pick a different status or show closed requests.'
-            : 'Open a role and request a referral for a candidate to start the pipeline.'}
+      {requests.data && shown === 0 ? (
+        <EmptyState
+          title={
+            filtered || activeOnly
+              ? 'Nothing matches these filters.'
+              : scope === 'mine'
+                ? "You haven't asked anyone yet."
+                : 'No requests yet.'
+          }
+          action={
+            filtered || activeOnly ? (
+              <Button onClick={() => apply({ statuses: [], hideClosed: false, roleId: undefined })}>
+                Show all requests
+              </Button>
+            ) : (
+              <Link to="/roles" className="link">
+                Open a role
+              </Link>
+            )
+          }
+        >
+          {filtered || activeOnly
+            ? null
+            : 'Pick a candidate on a role and ask the employee who knows them.'}
         </EmptyState>
       ) : null}
 
-      {rows.length > 0 ? (
-        <div className="rounded-md border border-line bg-surface overflow-hidden">
+      {shown > 0 ? (
+        <div className="border-y border-line bg-surface">
           <table className="data-table">
             <thead>
               <tr>
-                <th>Candidate</th>
-                <th>Role</th>
+                <th className="w-[26%]">Candidate</th>
                 <th>Employee asked</th>
                 <th>Status</th>
                 <th>Requested by</th>
-                <th>Last message to employee</th>
+                <th className="w-[24%]">Last message</th>
                 <th className="num">Last activity</th>
               </tr>
             </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr
-                  key={r.id}
-                  tabIndex={0}
-                  className="is-clickable"
-                  onClick={() => navigate(`/requests/${r.id}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      navigate(`/requests/${r.id}`);
-                    }
-                  }}
-                >
-                  <td>
-                    <div className="font-medium text-ink">{r.contact.full_name}</div>
-                    <div className="text-[12px] text-muted truncate max-w-[260px]">
-                      {r.contact.headline}
-                    </div>
-                  </td>
-                  <td>
-                    <div className="text-ink">{r.role.title}</div>
-                    <div className="text-[12px] text-muted">{r.role.team}</div>
-                  </td>
-                  <td>
-                    <div className="text-ink">{r.employee.full_name}</div>
-                    <div className="text-[12px] text-muted">{r.employee.title}</div>
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <StatusPill status={r.status} />
-                      {r.stale ? (
-                        <span className="text-[11.5px] font-medium text-amber-700 whitespace-nowrap">
-                          No reply · {r.days_waiting}d
-                        </span>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="text-ink-2 text-[12.5px]" title={r.requested_by}>
-                    {r.requested_by_name}
-                  </td>
-                  <td>
-                    {r.last_message ? (
-                      <div className="max-w-[300px]">
-                        <div
-                          className="text-[12.5px] text-ink-2 truncate"
-                          title={r.last_message.excerpt}
-                        >
-                          {r.last_message.excerpt}
-                        </div>
-                        <div className="text-[11.5px] text-muted">
-                          {r.last_message.delivered ? (
-                            <span className="text-emerald-700">Delivered via Slack</span>
-                          ) : (
-                            <span title={r.last_message.error ?? undefined}>Not delivered</span>
-                          )}
-                          {' · '}
-                          {formatRelative(r.last_message.created_at)}
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-faint text-[12.5px]">—</span>
-                    )}
-                  </td>
-                  <td className="num tnum text-ink-2 whitespace-nowrap" title={r.updated_at}>
-                    {formatRelative(r.last_event_at ?? r.updated_at)}
-                  </td>
+            {groups.map((g) => (
+              <tbody key={g.key} aria-label={g.title}>
+                <tr>
+                  <th colSpan={6} scope="rowgroup" className="group">
+                    {g.title}
+                    <span className="ml-2 text-[14px] font-normal text-muted tnum">
+                      {g.items.length}
+                    </span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
+                {g.items.map((r) => (
+                  <RequestRow key={r.id} r={r} onOpen={() => open(r.id)} />
+                ))}
+              </tbody>
+            ))}
           </table>
         </div>
       ) : null}
     </div>
+  );
+}
+
+function RequestRow({ r, onOpen }: { r: RequestSummary; onOpen: () => void }) {
+  return (
+    <tr
+      tabIndex={0}
+      className={`is-clickable ${r.stale ? 'is-stale' : ''}`}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+    >
+      <td>
+        <div className="name">{r.contact.full_name}</div>
+        <div className="mt-0.5 truncate text-[13px] text-ink-2">{r.role.title}</div>
+      </td>
+      <td className="text-ink">{r.employee.full_name}</td>
+      <td>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusPill status={r.status} />
+          {r.stale ? (
+            <span className="whitespace-nowrap text-[13px] font-medium text-ochre tnum">
+              No reply · {r.days_waiting ?? 0}d
+            </span>
+          ) : null}
+        </div>
+      </td>
+      <td className="text-ink-2" title={r.requested_by}>
+        {r.requested_by_name}
+      </td>
+      <td className="max-w-[340px]">
+        {r.last_message ? (
+          <div className="flex min-w-0 items-center gap-1.5">
+            <DeliveryCheck delivered={r.last_message.delivered} error={r.last_message.error} />
+            <span
+              className="min-w-0 truncate text-[13.5px] text-ink-2"
+              title={r.last_message.excerpt}
+            >
+              {r.last_message.excerpt}
+            </span>
+          </div>
+        ) : (
+          <span className="text-muted">—</span>
+        )}
+      </td>
+      <td className="num whitespace-nowrap text-ink-2 tnum" title={r.last_event_at ?? r.updated_at}>
+        {formatRelative(r.last_event_at ?? r.updated_at)}
+      </td>
+    </tr>
   );
 }
