@@ -52,11 +52,8 @@ function RequestView({ r }: { r: RequestDetail }) {
     <div>
       <PageHeader
         title={
-          <span className="flex min-w-0 items-center gap-2.5">
-            <span className="truncate">
-              {r.contact.full_name} for {r.role.title}
-            </span>
-            <StatusPill status={r.status} />
+          <span className="truncate">
+            {r.contact.full_name} for {r.role.title}
           </span>
         }
       >
@@ -266,10 +263,13 @@ function Attributes({ r }: { r: RequestDetail }) {
           </span>
         </Row>
       </dl>
-      <section aria-labelledby="why-title" className="mt-4 border-t border-line pt-4">
-        <h2 id="why-title" className="text-[13px] font-semibold text-ink">
+      <details open className="group mt-4 border-t border-line pt-4">
+        <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[13px] font-semibold text-ink [&::-webkit-details-marker]:hidden">
+          <span aria-hidden className="text-muted transition-transform group-open:rotate-90">
+            ›
+          </span>
           Why this candidate
-        </h2>
+        </summary>
         {r.reasons.length === 0 ? (
           <p className="mt-1 text-[13px] text-muted">No stored match signals for this pair.</p>
         ) : (
@@ -289,7 +289,7 @@ function Attributes({ r }: { r: RequestDetail }) {
             ))}
           </dl>
         )}
-      </section>
+      </details>
     </aside>
   );
 }
