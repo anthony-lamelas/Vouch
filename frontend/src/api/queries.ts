@@ -61,6 +61,7 @@ export function useCandidates(roleId: string, filters: CandidateFilters) {
           school_tiers: filters.schoolTiers,
           // People already in the pipeline are shown in the role's request strip instead.
           exclude_requested: true,
+          same_region: filters.sameRegion,
           q: filters.q,
           limit: filters.limit,
           offset: filters.offset,

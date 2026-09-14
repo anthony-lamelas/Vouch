@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
+from app.services.geo import location_match
 from app.services.taxonomy import (
     ADJACENT_FAMILIES,
     SENIORITY_LABELS,
@@ -129,11 +130,12 @@ def connection_strength(
 
 # ---- Match score -----------------------------------------------------------------------------
 
-W_SKILLS = 0.35
-W_FIT = 0.25
-W_COMPANY = 0.20
-W_SCHOOL_TIER = 0.10
+W_SKILLS = 0.30
+W_FIT = 0.20
+W_COMPANY = 0.15
+W_SCHOOL_TIER = 0.05
 W_STRENGTH = 0.10
+W_LOCATION = 0.20
 MIN_STORED_SCORE = 0.30
 
 
@@ -179,8 +181,17 @@ def match_score(
     school_tiers: dict[str, int],
     best_strength: float,
     best_strength_detail: str | None = None,
+    contact_location: str | None = None,
+    role_location: str | None = None,
+    role_is_remote: bool = False,
 ) -> MatchResult:
     reasons: list[dict[str, Any]] = []
+
+    where = location_match(
+        role_location=role_location,
+        role_is_remote=role_is_remote,
+        contact_location=contact_location,
+    )
 
     overlap = [s for s in role_skills if s in set(contact_skills)]
     skills = len(overlap) / len(role_skills) if role_skills else 0.0
@@ -242,6 +253,11 @@ def match_score(
             }
         )
 
+    # Always shown, good or bad: a mismatch should be visible, not silently penalised.
+    reasons.append(
+        {"signal": "location", "label": where.label, "detail": where.detail, "value": where.value}
+    )
+
     if best_strength >= 0.5:
         reasons.append(
             {
@@ -257,7 +273,8 @@ def match_score(
         + W_FIT * fit
         + W_COMPANY * company_score
         + W_SCHOOL_TIER * school_score
-        + W_STRENGTH * best_strength,
+        + W_STRENGTH * best_strength
+        + W_LOCATION * where.value,
         3,
     )
     return MatchResult(score=score, reasons=reasons)

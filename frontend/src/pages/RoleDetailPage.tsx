@@ -21,7 +21,7 @@ import {
   type FilterAction,
   type TierField,
 } from '../lib/candidateFilters';
-import { buttonClass } from '../lib/classes';
+import { buttonClass, filterPillClass } from '../lib/classes';
 import { firstName, formatCount } from '../lib/format';
 import { whyLine } from '../lib/reasons';
 import { familyLabel, seniorityLabel } from '../lib/labels';
@@ -179,6 +179,19 @@ export function RoleDetailPage() {
           onChange={(values) => dispatch({ type: 'setList', field: 'schools', values })}
           pinned={tierGroup('schoolTiers')}
         />
+        <button
+          type="button"
+          className={filterPillClass(filters.sameRegion)}
+          aria-pressed={filters.sameRegion}
+          title={
+            filters.sameRegion
+              ? 'Showing people in the same region as the role. Click to show everyone.'
+              : 'Showing everyone. Click to keep to the role’s region.'
+          }
+          onClick={() => dispatch({ type: 'setSameRegion', on: !filters.sameRegion })}
+        >
+          {filters.sameRegion ? 'Same region' : 'All regions'}
+        </button>
         {chips.length > 0 ? (
           <>
             <span aria-hidden className="mx-1 h-4 w-px bg-line" />
@@ -221,6 +234,17 @@ export function RoleDetailPage() {
                 No candidates match these filters.{' '}
                 <button type="button" className="link" onClick={() => dispatch({ type: 'clear' })}>
                   Clear all filters
+                </button>
+              </>
+            ) : filters.sameRegion ? (
+              <>
+                No one in this region scored for this role.{' '}
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() => dispatch({ type: 'setSameRegion', on: false })}
+                >
+                  Show all regions
                 </button>
               </>
             ) : (

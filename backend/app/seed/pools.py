@@ -314,17 +314,33 @@ TEAMS: Final[tuple[str, ...]] = (
 )
 
 LOCATIONS: Final[tuple[tuple[str, int], ...]] = (
-    ("San Francisco", 34),
-    ("New York City", 18),
-    ("Seattle", 10),
-    ("Austin", 6),
-    ("Los Angeles", 5),
-    ("Boston", 5),
-    ("London", 6),
-    ("Toronto", 5),
-    ("Singapore", 3),
-    ("Tokyo", 3),
-    ("Remote", 5),
+    # North America ~58%
+    ("San Francisco", 26),
+    ("New York City", 13),
+    ("Seattle", 7),
+    ("Austin", 4),
+    ("Los Angeles", 3),
+    ("Boston", 3),
+    ("Toronto", 3),
+    # Europe ~13%
+    ("London", 7),
+    ("Berlin", 3),
+    ("Paris", 2),
+    ("Dublin", 1),
+    # Asia-Pacific ~17%
+    ("Singapore", 5),
+    ("Tokyo", 5),
+    ("Sydney", 3),
+    ("Seoul", 2),
+    ("Bangalore", 2),
+    # Middle East ~4%
+    ("Dubai", 2),
+    ("Riyadh", 2),
+    # Latin America ~4%
+    ("Mexico City", 2),
+    ("Sao Paulo", 2),
+    # Unknown
+    ("Remote", 4),
 )
 
 DEGREES: Final[tuple[tuple[str, str, int], ...]] = (

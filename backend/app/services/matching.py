@@ -25,6 +25,7 @@ class ContactFeatures:
     schools: list[str]
     best_strength: float
     best_detail: str | None
+    location: str
 
 
 def _best_connections(db: Session) -> dict[Any, tuple[float, str | None]]:
@@ -61,6 +62,7 @@ def load_contact_features(db: Session) -> list[ContactFeatures]:
                 schools=[e["school"] for e in c.education],
                 best_strength=strength,
                 best_detail=detail,
+                location=c.location,
             )
         )
     return features
@@ -98,6 +100,9 @@ def recompute_match_scores(db: Session, *, role_ids: list[Any] | None = None) ->
                 school_tiers=school_tiers,
                 best_strength=c.best_strength,
                 best_strength_detail=c.best_detail,
+                contact_location=c.location,
+                role_location=role.location,
+                role_is_remote=role.is_remote,
             )
             if result.score < MIN_STORED_SCORE:
                 continue

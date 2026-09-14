@@ -118,3 +118,75 @@ def test_ask_draft_is_concise_and_signed() -> None:
     assert "AI Support Engineer" in text and "overlapped at DoorDash" in text
     assert text.endswith("Thanks,\nAnthony")
     assert len(text) < 360
+
+
+def test_location_match_same_city_region_and_elsewhere() -> None:
+    from app.services.geo import location_match, places, regions_of
+
+    assert [p.city for p in places("San Francisco, Austin, New York City")] == [
+        "San Francisco",
+        "Austin",
+        "New York City",
+    ]
+    assert regions_of("Austin, Texas") == {"north_america"}
+    assert regions_of("Southern Europe") == {"europe"}
+    assert regions_of("Somewhere unrecognised") == frozenset()
+
+    same = location_match(role_location="Tokyo", role_is_remote=False, contact_location="Tokyo")
+    region = location_match(
+        role_location="Tokyo", role_is_remote=False, contact_location="Singapore"
+    )
+    far = location_match(
+        role_location="Tokyo", role_is_remote=False, contact_location="San Francisco"
+    )
+    assert (same.value, same.label) == (1.0, "Same city")
+    assert (region.value, region.label) == (0.5, "Same region")
+    assert (far.value, far.label) == (0.0, "Different region")
+    assert "relocate" in far.detail
+
+    remote = location_match(
+        role_location="Sydney", role_is_remote=True, contact_location="San Francisco"
+    )
+    assert remote.value == 0.6
+    unknown = location_match(role_location="Tokyo", role_is_remote=False, contact_location="Remote")
+    assert unknown.label == "Location unknown"
+
+
+def test_match_score_prefers_the_role_city() -> None:
+    def score(location: str, family: str = "customer_engineering") -> float:
+        return match_score(
+            contact_skills=["Python", "APIs"],
+            contact_family=family,
+            contact_seniority="mid",
+            contact_companies=["Stripe"],
+            contact_schools=[],
+            role_skills=["Python", "APIs", "Kubernetes"],
+            role_family="customer_engineering",
+            role_seniority="mid",
+            company_tiers={"Stripe": 1},
+            school_tiers={},
+            best_strength=0.3,
+            contact_location=location,
+            role_location="Tokyo",
+            role_is_remote=False,
+        ).score
+
+    assert score("Tokyo") > score("Singapore") > score("San Francisco")
+    # A same-city candidate with an adjacent-family fit beats an exact-fit candidate abroad.
+    assert score("Tokyo", family="engineering") > score("San Francisco")
+    result = match_score(
+        contact_skills=[],
+        contact_family="sales",
+        contact_seniority="mid",
+        contact_companies=[],
+        contact_schools=[],
+        role_skills=["Python"],
+        role_family="sales",
+        role_seniority="mid",
+        company_tiers={},
+        school_tiers={},
+        best_strength=0.0,
+        contact_location="San Francisco",
+        role_location="Tokyo",
+    )
+    assert {r["signal"]: r["label"] for r in result.reasons}["location"] == "Different region"

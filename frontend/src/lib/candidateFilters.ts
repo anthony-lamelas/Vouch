@@ -10,6 +10,8 @@ export interface CandidateFilters {
   companyTiers: number[];
   /** School tiers 1–3, sent as repeatable `school_tiers`. */
   schoolTiers: number[];
+  /** Only people in the role's region. On by default; the URL carries `all_regions=1` when off. */
+  sameRegion: boolean;
   q: string;
   limit: number;
   offset: number;
@@ -27,6 +29,7 @@ export const EMPTY_FILTERS: CandidateFilters = {
   schools: [],
   companyTiers: [],
   schoolTiers: [],
+  sameRegion: true,
   q: '',
   limit: DEFAULT_LIMIT,
   offset: 0,
@@ -55,6 +58,7 @@ export function parseFilters(params: URLSearchParams): CandidateFilters {
     schools: params.getAll('schools').filter(Boolean),
     companyTiers: tiers(params.getAll('company_tiers')),
     schoolTiers: tiers(params.getAll('school_tiers')),
+    sameRegion: params.get('all_regions') !== '1',
     q: params.get('q') ?? '',
     limit: Math.round(num(params.get('limit'), DEFAULT_LIMIT, 1, 100)),
     offset: Math.round(num(params.get('offset'), 0, 0, Number.MAX_SAFE_INTEGER)),
@@ -71,6 +75,7 @@ export function serializeFilters(
   for (const s of filters.schools) params.append('schools', s);
   for (const t of filters.companyTiers) params.append('company_tiers', String(t));
   for (const t of filters.schoolTiers) params.append('school_tiers', String(t));
+  if (!filters.sameRegion) params.set('all_regions', '1');
   if (filters.q) params.set('q', filters.q);
   if (filters.limit !== DEFAULT_LIMIT) params.set('limit', String(filters.limit));
   if (filters.offset > 0) params.set('offset', String(filters.offset));
@@ -86,6 +91,7 @@ export type FilterAction =
   | { type: 'setList'; field: ListField; values: string[] }
   | { type: 'toggleTier'; field: TierField; tier: number }
   | { type: 'setTiers'; field: TierField; tiers: number[] }
+  | { type: 'setSameRegion'; on: boolean }
   | { type: 'setPage'; offset: number }
   | { type: 'clear' };
 
@@ -112,10 +118,13 @@ export function filtersReducer(state: CandidateFilters, action: FilterAction): C
     }
     case 'setTiers':
       return { ...state, [action.field]: tiers(action.tiers.map(String)), offset: 0 };
+    case 'setSameRegion':
+      return { ...state, sameRegion: action.on, offset: 0 };
     case 'setPage':
       return { ...state, offset: Math.max(0, action.offset) };
     case 'clear':
-      return { ...EMPTY_FILTERS, limit: state.limit };
+      // The region toggle is a view preference, not a filter: clearing leaves it alone.
+      return { ...EMPTY_FILTERS, limit: state.limit, sameRegion: state.sameRegion };
   }
 }
 

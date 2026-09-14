@@ -153,6 +153,30 @@ def test_tier_lists_and_exclude_requested(client: TestClient, db: Session) -> No
     assert not any(i["contact"]["id"] in open_ids for i in hidden["items"])
 
 
+def test_same_region_filter_keeps_only_the_roles_region(client: TestClient, db: Session) -> None:
+    role = db.scalars(select(Role).where(Role.location == "Tokyo")).first()
+    assert role is not None
+    everyone = client.get(f"/api/roles/{role.id}/candidates", params={"limit": 100}).json()
+    nearby = client.get(
+        f"/api/roles/{role.id}/candidates", params={"limit": 100, "same_region": "true"}
+    ).json()
+    assert nearby["total"] < everyone["total"]
+    assert {c["contact"]["location"] for c in nearby["items"]} <= {
+        "Tokyo",
+        "Singapore",
+        "Sydney",
+        "Seoul",
+        "Bangalore",
+    }
+    # The location term ranks Tokyo people above everyone else with a comparable profile.
+    top_locations = [c["contact"]["location"] for c in everyone["items"][:5]]
+    assert "Tokyo" in top_locations
+    labels = {
+        r["label"] for c in everyone["items"] for r in c["reasons"] if r["signal"] == "location"
+    }
+    assert labels & {"Same city", "Same region", "Different region"}
+
+
 def test_tier_filter_only_returns_tier_one_alumni(client: TestClient) -> None:
     role = _first_role(client)
     page = client.get(
