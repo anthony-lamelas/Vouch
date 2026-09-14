@@ -353,6 +353,11 @@ function Actions({ r, employeeFirst }: { r: RequestDetail; employeeFirst: string
       ) : null}
 
       {r.stale ? (
+        <span className="text-[13px] font-medium text-needs-text">
+          No reply from {r.contact.full_name.split(' ')[0]} in {r.days_waiting} days.
+        </span>
+      ) : null}
+      {r.stale ? (
         <Button
           variant="primary"
           size="sm"
