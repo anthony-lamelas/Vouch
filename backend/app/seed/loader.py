@@ -18,6 +18,7 @@ from app.models import (
     Employee,
     MatchScore,
     OutreachMessage,
+    Recruiter,
     ReferralEvent,
     ReferralRequest,
     Role,
@@ -29,6 +30,7 @@ from app.services.ashby import fetch_or_snapshot, sync_roles
 from app.services.lifecycle import Status
 from app.services.matching import recompute_match_scores
 from app.services.outreach import TemplateGenerator
+from app.services.ownership import predefined_recruiters
 from app.services.referrals import (
     build_context,
     employee_actor,
@@ -49,6 +51,7 @@ TABLES_IN_DELETE_ORDER = (
     "role",
     "company_tier",
     "school_tier",
+    "recruiter",
     "slack_event",
 )
 
@@ -72,6 +75,13 @@ def seed_database(db: Session, settings: Settings, *, prefer_live_roles: bool = 
     truncate_all(db)
     db.add_all([CompanyTier(name=n, tier=t) for n, t in pools.COMPANY_TIERS.items()])
     db.add_all([SchoolTier(name=n, tier=t) for n, t in pools.SCHOOL_TIERS.items()])
+    db.flush()
+    db.add_all(
+        [
+            Recruiter(email=email, first_name=first, last_name=last)
+            for first, last, email in predefined_recruiters(settings)
+        ]
+    )
     db.flush()
 
     graph = generate_graph(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Any
 
 import jwt
 from fastapi import Depends, HTTPException, Request, status
@@ -17,6 +17,18 @@ from app.config import Settings, get_settings
 class CurrentUser:
     id: str
     email: str
+    name: str
+
+
+def _name_from_claims(claims: dict[str, Any], email: str) -> str:
+    meta = claims.get("user_metadata") or {}
+    for key in ("full_name", "name"):
+        value = meta.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    from app.services.ownership import name_from_email
+
+    return name_from_email(email)
 
 
 @lru_cache
@@ -33,7 +45,10 @@ def verify_token(token: str, settings: Settings) -> CurrentUser:
             claims = jwt.decode(
                 token, signing_key.key, algorithms=["ES256", "RS256"], audience="authenticated"
             )
-            return CurrentUser(id=str(claims["sub"]), email=str(claims.get("email", "")))
+            email = str(claims.get("email", ""))
+            return CurrentUser(
+                id=str(claims["sub"]), email=email, name=_name_from_claims(claims, email)
+            )
         except jwt.PyJWTError as exc:
             errors.append(f"jwks: {exc}")
     if settings.supabase_jwt_secret:
@@ -41,7 +56,10 @@ def verify_token(token: str, settings: Settings) -> CurrentUser:
             claims = jwt.decode(
                 token, settings.supabase_jwt_secret, algorithms=["HS256"], audience="authenticated"
             )
-            return CurrentUser(id=str(claims["sub"]), email=str(claims.get("email", "")))
+            email = str(claims.get("email", ""))
+            return CurrentUser(
+                id=str(claims["sub"]), email=email, name=_name_from_claims(claims, email)
+            )
         except jwt.PyJWTError as exc:
             errors.append(f"hs256: {exc}")
     raise HTTPException(
@@ -55,7 +73,7 @@ def get_current_user(
     request: Request, settings: Annotated[Settings, Depends(get_settings)]
 ) -> CurrentUser:
     if settings.auth_disabled:
-        return CurrentUser(id="local-dev", email="recruiter@vouch.local")
+        return CurrentUser(id="local-dev", email="recruiter@vouch.local", name="Local Recruiter")
     header = request.headers.get("Authorization", "")
     if not header.startswith("Bearer "):
         raise HTTPException(

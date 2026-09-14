@@ -20,3 +20,18 @@ class SchoolTier(Base):
 
     name: Mapped[str] = mapped_column(String(160), primary_key=True)
     tier: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+
+
+class Recruiter(Base):
+    """Predefined recruiter / hiring-manager identities: the demo login plus synthetic teammates.
+    Auth itself is Supabase; this table only supplies display names and role ownership."""
+
+    __tablename__ = "recruiter"
+
+    email: Mapped[str] = mapped_column(String(255), primary_key=True)
+    first_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(80), nullable=False)
+
+    @property
+    def full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}".strip()

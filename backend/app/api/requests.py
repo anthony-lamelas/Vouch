@@ -11,6 +11,7 @@ from app.api.serializers import REQUEST_LOAD_OPTIONS, request_detail, request_su
 from app.models import ReferralRequest, Role
 from app.schemas import CreateRequestIn, RequestDetail, RequestPage, TransitionIn
 from app.services.lifecycle import RECRUITER_SETTABLE, IllegalTransitionError, Status
+from app.services.ownership import recruiter_names
 from app.services.referrals import ActiveRequestExistsError, NoConnectionError, NotFoundError
 
 router = APIRouter(prefix="/requests", tags=["requests"])
@@ -39,9 +40,10 @@ def list_requests(
         stmt = stmt.where(ReferralRequest.role_id == role_id)
     total = db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
     rows = db.scalars(stmt.order_by(ReferralRequest.updated_at.desc()).limit(limit)).all()
+    names = recruiter_names(db)
     items = []
     for r in rows:
-        summary = request_summary(r)
+        summary = request_summary(r, names)
         summary.is_mine = r.requested_by == user.email or r.role.owner_email == user.email
         items.append(summary)
     return RequestPage(items=items, total=total)

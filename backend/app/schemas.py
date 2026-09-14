@@ -165,6 +165,7 @@ class RequestSummary(BaseModel):
     role: RoleBrief
     employee: EmployeeBrief
     requested_by: str
+    requested_by_name: str
     created_at: datetime
     updated_at: datetime
     last_event_at: datetime | None = None
@@ -249,6 +250,7 @@ class PublicConfig(BaseModel):
 class MeOut(BaseModel):
     id: str
     email: str
+    name: str
     auth_disabled: bool
 
 

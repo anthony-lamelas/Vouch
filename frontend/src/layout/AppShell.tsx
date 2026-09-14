@@ -1,3 +1,4 @@
+import { useMe } from '../api/queries';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import { Wordmark } from '../components/Wordmark';
@@ -9,6 +10,7 @@ const NAV = [
 
 export function AppShell() {
   const { user, config, signOut } = useAuth();
+  const me = useMe();
   const navigate = useNavigate();
   const demo = config?.auth_disabled ?? false;
 
@@ -46,7 +48,9 @@ export function AppShell() {
                 Local demo mode
               </span>
             ) : null}
-            <span className="text-muted tnum">{user?.email}</span>
+            <span className="text-ink-2" title={user?.email ?? undefined}>
+              {me.data?.name ?? user?.email}
+            </span>
             {!demo ? (
               <button
                 type="button"

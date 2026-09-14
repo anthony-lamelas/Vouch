@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
+  MeOut,
   CandidatePage,
   ContactDetail,
   CreateRequestIn,
@@ -26,6 +27,14 @@ export const keys = {
   requests: (params: RequestListParams) => ['requests', params] as const,
   request: (id: string) => ['requests', id] as const,
 };
+
+export function useMe() {
+  return useQuery({
+    queryKey: ['me'] as const,
+    queryFn: () => api.get<MeOut>('/me'),
+    staleTime: 300_000,
+  });
+}
 
 export function useRoles() {
   return useQuery({ queryKey: keys.roles, queryFn: () => api.get<RoleSummary[]>('/roles') });

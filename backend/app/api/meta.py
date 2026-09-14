@@ -31,7 +31,7 @@ def public_config(settings: AppSettings) -> PublicConfig:
 
 @router.get("/me", response_model=MeOut)
 def me(user: User, settings: AppSettings) -> MeOut:
-    return MeOut(id=user.id, email=user.email, auth_disabled=settings.auth_disabled)
+    return MeOut(id=user.id, email=user.email, name=user.name, auth_disabled=settings.auth_disabled)
 
 
 @router.get("/filters", response_model=FilterOptions)

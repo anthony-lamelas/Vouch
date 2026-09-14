@@ -69,6 +69,7 @@ def build_request_blocks(
     employee: Employee,
     demo_routed: bool,
     app_url: str,
+    requested_by_name: str | None = None,
 ) -> list[dict[str, Any]]:
     blocks: list[dict[str, Any]] = [
         {
@@ -80,7 +81,8 @@ def build_request_blocks(
             "text": {
                 "type": "mrkdwn",
                 "text": (
-                    f"*{request.requested_by}* would like to refer *{ctx.contact_full_name}* "
+                    f"*{requested_by_name or request.requested_by}* would like to refer "
+                    f"*{ctx.contact_full_name}* "
                     f"({ctx.contact_title} at {ctx.contact_company}) for "
                     f"*<{ctx.role_url}|{ctx.role_title}>*.\n\n"
                     "*Would you be willing to reach out and refer them?*"

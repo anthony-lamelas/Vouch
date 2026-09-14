@@ -41,6 +41,17 @@ def test_roles_come_from_snapshot(client: TestClient) -> None:
     assert "Software Engineer, Infrastructure" in titles
 
 
+def test_recruiter_display_names(client: TestClient) -> None:
+    me = client.get("/api/me").json()
+    assert me["name"] == "Local Recruiter"
+    page = client.get("/api/requests").json()
+    names = {i["requested_by_name"] for i in page["items"]}
+    assert "Dana Whitfield" in names or "Chris Nakamura" in names
+    assert not any("@" in n for n in names)
+    detail = client.get(f"/api/requests/{page['items'][0]['id']}").json()
+    assert "@" not in detail["events"][0]["actor_label"]
+
+
 def test_role_ownership_and_mine_filters(client: TestClient) -> None:
     all_roles = client.get("/api/roles").json()
     assert all(r["owner_email"] and r["owner_name"] for r in all_roles)
