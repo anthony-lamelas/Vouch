@@ -177,7 +177,13 @@ class SlackNotifier:
         try:
             opened = self._client.conversations_open(users=[recipient])
             channel_id = str(opened["channel"]["id"])
-            posted = self._client.chat_postMessage(channel=channel_id, text=text, blocks=blocks)
+            posted = self._client.chat_postMessage(
+                channel=channel_id,
+                text=text,
+                blocks=blocks,
+                unfurl_links=False,
+                unfurl_media=False,
+            )
             return SendResult(True, recipient, channel_id, str(posted["ts"]))
         except SlackApiError as exc:
             return SendResult(False, recipient, error=str(exc.response.get("error", exc)))
@@ -191,7 +197,13 @@ class SlackNotifier:
 
     def reply(self, *, channel_id: str, thread_ts: str | None, text: str) -> None:
         try:
-            self._client.chat_postMessage(channel=channel_id, text=text, thread_ts=thread_ts)
+            self._client.chat_postMessage(
+                channel=channel_id,
+                text=text,
+                thread_ts=thread_ts,
+                unfurl_links=False,
+                unfurl_media=False,
+            )
         except SlackApiError:
             return None
 

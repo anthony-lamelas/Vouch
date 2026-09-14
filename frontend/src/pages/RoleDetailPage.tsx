@@ -271,7 +271,6 @@ export function RoleDetailPage() {
           <CandidateDrawer
             contactId={contactId}
             roleId={id}
-            roleTitle={role.data?.title ?? ''}
             reasons={items.find((c) => c.contact.id === contactId)?.reasons}
             onClose={closeContact}
           />
