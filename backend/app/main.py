@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -63,14 +63,44 @@ for r in (meta.router, roles.router, contacts.router, requests.router, slack.rou
     app.include_router(r, prefix="/api")
 
 
+INDEX_HEADERS = {"Cache-Control": "no-cache"}
+
+
+def _looks_like_file(path: str) -> bool:
+    """/assets/app-abc123.js or /favicon.svg, as opposed to a client route like /roles/123."""
+    last = path.rsplit("/", 1)[-1]
+    return path.startswith("/assets/") or ("." in last)
+
+
 @app.exception_handler(404)
 async def not_found(request: Request, exc: Exception) -> JSONResponse | FileResponse:
-    """SPA fallback: unknown non-API paths serve index.html so client routing works."""
+    """SPA fallback: unknown client routes serve index.html so client routing works.
+
+    Missing files (a hashed asset from a previous build, a typo'd image) must stay real 404s,
+    otherwise a browser holding a stale index.html gets HTML back for a <script> request.
+    """
+    path = request.url.path
     index = _static_dir() / "index.html"
-    if not request.url.path.startswith("/api") and index.exists():
-        return FileResponse(index)
+    if not path.startswith("/api") and not _looks_like_file(path) and index.exists():
+        return FileResponse(index, headers=INDEX_HEADERS)
     detail = getattr(exc, "detail", "Not found")
     return JSONResponse({"detail": detail}, status_code=404)
+
+
+@app.middleware("http")
+async def cache_headers(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    """Hashed assets are immutable; index.html must always be revalidated."""
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/assets/") and response.status_code == 200:
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif not path.startswith("/api") and response.headers.get("content-type", "").startswith(
+        "text/html"
+    ):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 def _static_dir() -> Path:
