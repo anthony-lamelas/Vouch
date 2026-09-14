@@ -124,6 +124,7 @@ class RoleBrief(ORMModel):
     team: str
     department: str
     location: str
+    job_url: str
     owner_email: str | None = None
     owner_name: str | None = None
 
@@ -183,6 +184,8 @@ class RequestDetail(RequestSummary):
     closed_outcome: str | None
     allowed_transitions: list[Status]
     connection: ConnectionOut | None
+    # Other connected colleagues the recruiter could ask instead, strongest first.
+    alternatives: list[ConnectionOut]
     reasons: list[dict[str, Any]]
     events: list[EventOut]
     messages: list[MessageOut]
@@ -220,6 +223,11 @@ class TransitionIn(BaseModel):
     to_status: Status
     note: str | None = Field(default=None, max_length=2000)
     reason: DeclineReason | None = None
+
+
+class RerouteIn(BaseModel):
+    # Which colleague to ask next; defaults to the strongest remaining connection.
+    employee_id: uuid.UUID | None = None
 
 
 # ---- Meta ------------------------------------------------------------------------------------

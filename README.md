@@ -11,7 +11,7 @@ Warm referral sourcing for Cognition. VOUCH turns employees' networks into a sea
 1. **Roles** are synced from Cognition's Ashby job board (93 postings). Required skills are extracted from each description.
 2. **Contacts** are canonical people in employees' networks with work history, education and skills. Every contact has one or more **connections** to employees, each with a strength score (shared employer and dates, shared school, recency).
 3. **Match scores** are precomputed per role and contact with human-readable reasons. Recruiters see the ranked list and filter by company, school and skills.
-4. **Request referral** picks the strongest-connected employee, drafts a message, and DMs them in Slack with buttons. Button clicks and plain-English replies update the request. If the employee declines, VOUCH re-routes to the next-strongest connection.
+4. **Request referral** picks the strongest-connected employee, drafts a message, and DMs them in Slack with buttons. Button clicks and plain-English replies update the request. If the employee declines, Slack asks them why; the request parks with that reason and the recruiter decides whether to ask another connected colleague or close it.
 5. **Pipeline** shows every request with its status, the last message the employee received, and a full event history on the request page. Roles open on **My roles**; the pipeline opens on **My requests**, each with an All toggle.
 
 ## Run it locally

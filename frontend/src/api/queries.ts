@@ -3,13 +3,14 @@ import { api } from './client';
 import type {
   AskPreviewIn,
   AskPreviewOut,
-  MeOut,
   CandidatePage,
   ContactDetail,
   CreateRequestIn,
   FilterOptions,
+  MeOut,
   RequestDetail,
   RequestPage,
+  RerouteIn,
   RoleDetail,
   RoleSummary,
   Stats,
@@ -151,6 +152,21 @@ export function useNudgeRequest(id: string) {
     onSuccess: async (data) => {
       qc.setQueryData(keys.request(id), data);
       await qc.invalidateQueries({ queryKey: ['requests'] });
+    },
+  });
+}
+
+export function useRerouteRequest(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: RerouteIn) => api.post<RequestDetail>(`/requests/${id}/reroute`, body),
+    onSuccess: async (data) => {
+      qc.setQueryData(keys.request(id), data);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['requests'] }),
+        qc.invalidateQueries({ queryKey: keys.contact(data.contact.id) }),
+        qc.invalidateQueries({ queryKey: keys.stats }),
+      ]);
     },
   });
 }

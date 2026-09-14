@@ -60,7 +60,7 @@ A referral request is a ticket with a status. Every change appends a `referral_e
 |---|---|---|
 | requested | recruiter (system sends DM) | Employee asked, no answer yet |
 | employee_accepted | Bob | Bob will reach out |
-| employee_declined | Bob (reason: dont_know_well, not_a_fit) | System re-routes to next-strongest employee if one exists |
+| employee_declined | Bob (reason: dont_know_well, not_a_fit, not_looking, other + free text) | Request parks; recruiter sees the reason and picks another connected colleague (`POST /requests/{id}/reroute`) or closes |
 | contacted | Bob | Bob has messaged the candidate |
 | candidate_interested | Bob | Candidate wants to talk |
 | candidate_declined | Bob | Candidate said no |
@@ -96,4 +96,4 @@ Consent and network-visibility controls, CSV upload, ATS integration, bonus payo
 3. Open a candidate. Two employees know them; the strongest edge is Bob (worked together at Stripe, 2019–2021). Click Request Referral.
 4. Switch to Slack. Bob's DM arrives with the drafted message and buttons. Click "I'll reach out", then "Contacted", then type "she's interested, wants to chat next week".
 5. Back in the app: pipeline shows Candidate interested with the message that went out, and the timeline shows every step with actor and time.
-6. Decline one on purpose to show automatic re-routing to the next-strongest employee.
+6. Decline one on purpose: Slack asks why, the request page shows the reason, and the recruiter chooses who to ask next.

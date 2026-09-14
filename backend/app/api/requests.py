@@ -21,6 +21,7 @@ from app.schemas import (
     EmployeeBrief,
     RequestDetail,
     RequestPage,
+    RerouteIn,
     TransitionIn,
 )
 from app.services.lifecycle import RECRUITER_SETTABLE, IllegalTransitionError, Status
@@ -130,6 +131,27 @@ def transition_request(
         raise HTTPException(status_code=404, detail="Request not found") from exc
     except IllegalTransitionError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return request_detail(service.db, req)
+
+
+@router.post("/{request_id}/reroute", response_model=RequestDetail)
+def reroute_request(
+    request_id: uuid.UUID, body: RerouteIn, service: Referrals, user: User
+) -> RequestDetail:
+    """After an employee passes, ask another connected colleague. The recruiter's call."""
+    try:
+        req = service.reroute(request_id, actor=user.email, employee_id=body.employee_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Request not found") from exc
+    except IllegalTransitionError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Only a request the employee passed on can be re-routed ({exc.current})",
+        ) from exc
+    except NoConnectionError as exc:
+        raise HTTPException(
+            status_code=409, detail="No one else at Cognition is connected to this person"
+        ) from exc
     return request_detail(service.db, req)
 
 

@@ -1,4 +1,4 @@
-"""Referral request orchestration: create, transition, re-route, notify."""
+"""Referral request orchestration: create, transition, nudge, re-route, notify."""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ from app.models import (
 )
 from app.services.lifecycle import (
     ACTIVE_STATUSES,
+    DECLINE_LABELS,
     DeclineReason,
     IllegalTransitionError,
     Status,
@@ -74,6 +75,32 @@ def strongest_connection(
 
 def connection_for(db: Session, contact_id: uuid.UUID, employee_id: uuid.UUID) -> Connection | None:
     return db.get(Connection, {"employee_id": employee_id, "contact_id": contact_id})
+
+
+def declined_employee_ids(req: ReferralRequest) -> set[uuid.UUID]:
+    """Everyone who has already been asked on this request and passed, plus the current employee."""
+    ids: set[uuid.UUID] = set()
+    for e in req.events:
+        if e.to_status != Status.EMPLOYEE_DECLINED.value:
+            continue
+        if e.employee_id is not None:
+            ids.add(e.employee_id)
+        elif e.actor.startswith("employee:"):
+            ids.add(uuid.UUID(e.actor.split(":", 1)[1]))
+    ids.add(req.employee_id)
+    return ids
+
+
+def other_connections(db: Session, req: ReferralRequest) -> list[Connection]:
+    """Connected colleagues the recruiter could ask instead, strongest first."""
+    excluded = declined_employee_ids(req)
+    stmt = (
+        select(Connection)
+        .options(selectinload(Connection.employee))
+        .where(Connection.contact_id == req.contact_id, Connection.employee_id.not_in(excluded))
+        .order_by(Connection.strength.desc())
+    )
+    return list(db.scalars(stmt).all())
 
 
 def shared_history(connection: Connection | None) -> str | None:
@@ -268,19 +295,13 @@ class ReferralService:
         current = Status(req.status)
         assert_transition(current, to_status)
         if to_status == Status.EMPLOYEE_DECLINED and not note:
-            note = {
-                DeclineReason.DONT_KNOW_WELL: "Doesn't know them well",
-                DeclineReason.NOT_A_FIT: "Not a fit for this role",
-                None: "Declined to refer",
-            }[reason]
+            note = DECLINE_LABELS[reason]
         req.status = to_status.value
         if to_status == Status.CLOSED:
             req.closed_outcome = note
         self._event(req, current, to_status, actor, note)
-        self._update_slack(req, to_status)
-        if to_status == Status.EMPLOYEE_DECLINED:
-            self._reroute(req)
-        elif to_status == Status.CANDIDATE_DECLINED:
+        self._update_slack(req, to_status, note=note)
+        if to_status == Status.CANDIDATE_DECLINED:
             self._auto_close(req, "Closed automatically: candidate passed")
         self.db.commit()
         return self.get(req.id)
@@ -367,20 +388,29 @@ class ReferralService:
             )
         return req
 
-    def _reroute(self, req: ReferralRequest) -> None:
-        """After an employee declines, ask the next-strongest connection if there is one."""
-        declined = {
-            uuid.UUID(e.actor.split(":", 1)[1])
-            for e in req.events
-            if e.to_status == Status.EMPLOYEE_DECLINED.value and e.actor.startswith("employee:")
-        }
-        declined.add(req.employee_id)
-        nxt = strongest_connection(self.db, req.contact_id, exclude=declined)
+    def reroute(
+        self,
+        request_id: uuid.UUID,
+        *,
+        actor: str,
+        employee_id: uuid.UUID | None = None,
+    ) -> ReferralRequest:
+        """After an employee passes, the recruiter asks another connected colleague instead.
+
+        Defaults to the strongest remaining connection; `employee_id` picks a specific one.
+        """
+        req = self.get(request_id)
+        current = Status(req.status)
+        assert_transition(current, Status.REQUESTED)
+        excluded = declined_employee_ids(req)
+        if employee_id is None:
+            nxt = strongest_connection(self.db, req.contact_id, exclude=excluded)
+        else:
+            nxt = connection_for(self.db, req.contact_id, employee_id)
+            if nxt is not None and employee_id in excluded:
+                nxt = None
         if nxt is None:
-            self._auto_close(
-                req, "Closed automatically: no other colleague is connected to this person"
-            )
-            return
+            raise NoConnectionError(req.contact_id)
         previous = req.employee
         employee = nxt.employee
         req.employee_id = employee.id
@@ -389,11 +419,10 @@ class ReferralService:
         self.db.refresh(req)
         self._event(
             req,
-            Status.EMPLOYEE_DECLINED,
+            current,
             Status.REQUESTED,
-            "system",
-            f"Re-routed from {previous.full_name} to {employee.full_name} "
-            f"(next-strongest connection, {float(nxt.strength):.2f})",
+            actor,
+            f"Re-routed from {previous.full_name} to {employee.full_name}",
         )
         ctx = build_context(
             contact=req.contact,
@@ -405,6 +434,8 @@ class ReferralService:
         drafts = self.generator.generate(ctx)
         req.outreach_casual, req.outreach_formal = drafts.ask, drafts.formal
         self._notify(req, ctx, drafts, employee)
+        self.db.commit()
+        return self.get(req.id)
 
     # ---- internals ---------------------------------------------------------------------------
 
@@ -423,6 +454,7 @@ class ReferralService:
             to_status=to_status.value,
             actor=actor,
             note=note,
+            employee_id=req.employee_id,
         )
         if at is not None:
             event.created_at = at
@@ -472,7 +504,9 @@ class ReferralService:
         self.db.flush()
         return message
 
-    def _update_slack(self, req: ReferralRequest, status: Status) -> None:
+    def _update_slack(
+        self, req: ReferralRequest, status: Status, *, note: str | None = None
+    ) -> None:
         latest = next(
             (m for m in reversed(req.messages) if m.external_channel_id and m.external_ts), None
         )
@@ -496,6 +530,7 @@ class ReferralService:
             contact_first=req.contact.full_name.split(" ")[0],
             employee_first=req.employee.full_name.split(" ")[0],
             suggested_message=suggested,
+            note=note or "",
         )
         self.notifier.update(
             channel_id=str(latest.external_channel_id),

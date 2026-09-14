@@ -20,6 +20,7 @@ export const role = {
   location: 'SF',
   owner_email: null,
   owner_name: null,
+  job_url: 'https://jobs.ashbyhq.com/cognition/abc',
 };
 
 export const employee = {

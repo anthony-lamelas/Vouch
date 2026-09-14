@@ -63,3 +63,15 @@ describe('sidebar needs-you links', () => {
     expect(needsYouCount([makeRequest('employee_accepted')])).toBe(0);
   });
 });
+
+describe('employees who passed', () => {
+  it('asks the recruiter to decide, counting them as needing attention', () => {
+    const passed = makeRequest('employee_declined', { id: 'd1' });
+    const items = computeNeedsYou([passed, makeRequest('requested')]);
+    expect(items[0]).toMatchObject({ key: 'declined', action: 'decide what to do' });
+    expect(items[0]?.lead).toMatch(/passed on/);
+    expect(items[0]?.to).toBe('/requests/d1');
+    expect(needsYouCount([passed])).toBe(1);
+    expect(sidebarNeedsYou([passed])[0]?.label).toMatch(/passed on/);
+  });
+});
