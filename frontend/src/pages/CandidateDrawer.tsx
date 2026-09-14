@@ -10,7 +10,6 @@ import { ErrorState, Skeleton } from '../components/EmptyState';
 import { XIcon } from '../components/Icons';
 import { SectionTitle } from '../components/PageHeader';
 import { StatusPill } from '../components/StatusPill';
-import { StrengthBar } from '../components/StrengthBar';
 import { firstName, formatRelative, formatSpan } from '../lib/format';
 import { sortEducation, sortExperiences } from '../lib/history';
 
@@ -230,12 +229,10 @@ function Notice({ children }: { children: ReactNode }) {
 
 function ConnectionLine({
   c,
-  withBar = true,
   selected = false,
 }: {
   c: ConnectionOut;
   /** The read-only connections list keeps its strength bar; the picker does not. */
-  withBar?: boolean;
   selected?: boolean;
 }) {
   return (
@@ -251,7 +248,6 @@ function ConnectionLine({
             {c.employee.team ? `, ${c.employee.team}` : ''}
           </span>
         </span>
-        {withBar ? <StrengthBar value={c.strength} /> : null}
       </div>
       {c.shared_history ? (
         <div className="text-[12px] tracking-normal text-carbon">{c.shared_history}</div>
@@ -377,7 +373,7 @@ function Ask({
                 checked ? 'border-cobalt bg-ice' : 'border-line bg-canvas hover:bg-haze'
               }`}
             >
-              <ConnectionLine c={c} withBar={false} selected={checked} />
+              <ConnectionLine c={c} selected={checked} />
               {i === 0 && connections.length > 1 ? (
                 <span className="text-[12px] tracking-normal text-cobalt">
                   Strongest connection
