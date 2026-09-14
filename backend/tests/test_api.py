@@ -395,3 +395,11 @@ def test_role_counts(client: TestClient, db: Session) -> None:
     )
     assert role["active_request_count"] == active
     assert db.get(Role, uuid.UUID(role["id"])) is not None
+
+
+def test_missing_asset_is_a_real_404_not_the_spa_shell(client: TestClient) -> None:
+    r = client.get("/assets/index-stale123.js")
+    assert r.status_code == 404
+    assert r.headers["content-type"].startswith("application/json")
+    r = client.get("/favicon-missing.svg")
+    assert r.status_code == 404
