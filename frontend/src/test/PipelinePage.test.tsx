@@ -42,6 +42,8 @@ const role = {
   team: 'Support',
   department: 'CE',
   location: 'SF',
+  owner_email: null,
+  owner_name: null,
 };
 const employee = {
   id: 'e1',
@@ -67,6 +69,7 @@ const page: RequestPage = {
       last_event_at: '2026-09-02T10:00:00Z',
       days_waiting: null,
       stale: false,
+      is_mine: true,
     },
     {
       id: 'req-new',
@@ -81,6 +84,7 @@ const page: RequestPage = {
       last_event_at: '2026-09-11T10:00:00Z',
       days_waiting: null,
       stale: false,
+      is_mine: true,
     },
   ],
 };
