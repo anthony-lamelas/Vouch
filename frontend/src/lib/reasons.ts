@@ -20,3 +20,14 @@ export function whyLine(reasons: Reason[], max = 2): string {
     .map((label, i) => (i === 0 ? label : lowerFirst(label)))
     .join(' · ');
 }
+
+/**
+ * The detail line for a reason. A tier-1/2 employer counts wherever it sits in the résumé,
+ * but the wording says whether it's where they are now or somewhere they used to be.
+ */
+export function reasonDetail(r: Reason, currentCompany: string): string {
+  if (r.signal === 'company' && r.detail) {
+    return r.detail === currentCompany ? `Currently at ${r.detail}` : `Previously at ${r.detail}`;
+  }
+  return r.detail ?? '';
+}

@@ -23,7 +23,6 @@ import {
 import { buttonClass } from '../lib/classes';
 import { firstName, formatCount } from '../lib/format';
 import { whyLine } from '../lib/reasons';
-import { familyLabel, seniorityLabel } from '../lib/labels';
 import { CandidateDrawer } from './CandidateDrawer';
 
 /** "Tier 1 / 2 / 3" rows pinned above the company and school lists. */
@@ -120,8 +119,7 @@ export function RoleDetailPage() {
           </PageHeader>
           <p className="mt-3 text-[13px] text-muted">
             {role.data.team} · {role.data.location}
-            {role.data.is_remote ? ' (remote)' : ''} · {seniorityLabel(role.data.seniority)} ·{' '}
-            {familyLabel(role.data.job_family)}
+            {role.data.is_remote ? ' (remote)' : ''}
           </p>
         </>
       ) : null}
