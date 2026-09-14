@@ -36,6 +36,7 @@ from app.services.slack import (
     action_buttons,
     build_request_blocks,
     resolve_recipient,
+    routing_reason,
     status_blocks,
 )
 
@@ -443,6 +444,9 @@ class ReferralService:
             demo_routed=demo_routed,
             app_url=self.settings.app_base_url,
             requested_by_name=display_name(req.requested_by, recruiter_names(self.db)),
+            routing_note=routing_reason(
+                self.settings, employee, recipient, requester_email=req.requested_by
+            ),
         )
         text = (
             f"Referral request: could you reach out to {ctx.contact_full_name} "

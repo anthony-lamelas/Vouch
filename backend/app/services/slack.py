@@ -70,6 +70,7 @@ def build_request_blocks(
     demo_routed: bool,
     app_url: str,
     requested_by_name: str | None = None,
+    routing_note: str = "",
 ) -> list[dict[str, Any]]:
     blocks: list[dict[str, Any]] = [
         {
@@ -108,7 +109,9 @@ def build_request_blocks(
                         "type": "mrkdwn",
                         "text": (
                             f"_Demo routing: this would go to {employee.full_name} "
-                            f"({employee.email})._"
+                            f"({employee.email})"
+                            + (f"; sent to you because it {routing_note}" if routing_note else "")
+                            + "._"
                         ),
                     }
                 ],
@@ -260,3 +263,20 @@ def resolve_recipient(
     if settings.slack_demo_user_id:
         return settings.slack_demo_user_id, employee.slack_user_id != settings.slack_demo_user_id
     return employee.slack_user_id or "", False
+
+
+def routing_reason(
+    settings: Settings, employee: Employee, recipient: str, *, requester_email: str = ""
+) -> str:
+    """Short explanation for the demo-routing line on the card."""
+    if not recipient or recipient == (employee.slack_user_id or ""):
+        return ""
+    if (
+        settings.slack_demo_user_id
+        and recipient == settings.slack_demo_user_id
+        and (not requester_email or recipient != requester_email)
+    ):
+        if settings.slack_route_to_requester:
+            return "fallback demo user; no Slack member matched the requester's email"
+        return "fallback demo user"
+    return "matched the requester's Slack email"
