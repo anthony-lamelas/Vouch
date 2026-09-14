@@ -134,6 +134,6 @@ describe('PipelinePage', () => {
     const requestUrl = fetchMock.mock.calls
       .map((c) => urlOf(c[0]))
       .find((u) => u.includes('/api/requests'));
-    expect(requestUrl).toBe('/api/requests?limit=200');
+    expect(requestUrl).toBe('/api/requests?mine=true&limit=200');
   });
 });
