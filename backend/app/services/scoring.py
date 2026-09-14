@@ -48,12 +48,12 @@ def _experience_overlap(
                 same_team = bool(e.get("team")) and e.get("team") == c.get("team")
                 score = 1.0 if same_team else 0.8
                 years = (min(e_end, c_end).year, max(e_start, c_start).year)
-                text = f"Worked together at {e['company']} ({years[1]}-{years[0]})"
+                text = f"Overlapped at {e['company']} ({years[1]}-{years[0]})"
                 if same_team:
                     text += f" on {e['team']}"
             else:
                 score = 0.4
-                text = f"Both worked at {e['company']}, different years"
+                text = f"Overlapped at {e['company']}, different years"
             if score > best:
                 best, detail = score, text
     return best, detail
@@ -75,7 +75,11 @@ def _school_overlap(
                 date(int(c["end_year"]), 12, 31),
             )
             score = 1.0 if overlap else 0.6
-            text = f"Overlapped at {e['school']}" if overlap else f"Both attended {e['school']}"
+            text = (
+                f"Overlapped at {e['school']}"
+                if overlap
+                else f"Overlapped at {e['school']}, different years"
+            )
             if score > best:
                 best, detail = score, text
     return best, detail

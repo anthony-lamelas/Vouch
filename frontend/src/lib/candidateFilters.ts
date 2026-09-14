@@ -6,22 +6,27 @@
 export interface CandidateFilters {
   companies: string[];
   schools: string[];
-  skills: string[];
-  companyTier: number | null;
+  /** Company tiers 1–3, sent as repeatable `company_tiers`. */
+  companyTiers: number[];
+  /** School tiers 1–3, sent as repeatable `school_tiers`. */
+  schoolTiers: number[];
   q: string;
   limit: number;
   offset: number;
 }
 
-export type ListField = 'companies' | 'schools' | 'skills';
+export type ListField = 'companies' | 'schools';
+export type TierField = 'companyTiers' | 'schoolTiers';
+
+export const TIERS: readonly number[] = [1, 2, 3];
 
 export const DEFAULT_LIMIT = 25;
 
 export const EMPTY_FILTERS: CandidateFilters = {
   companies: [],
   schools: [],
-  skills: [],
-  companyTier: null,
+  companyTiers: [],
+  schoolTiers: [],
   q: '',
   limit: DEFAULT_LIMIT,
   offset: 0,
@@ -34,14 +39,22 @@ function num(value: string | null, fallback: number, min: number, max: number): 
   return Math.min(max, Math.max(min, n));
 }
 
+/** Keeps only whole tiers 1–3, de-duplicated and ascending. */
+function tiers(values: string[]): number[] {
+  const out: number[] = [];
+  for (const v of values) {
+    const n = Number(v);
+    if (Number.isInteger(n) && TIERS.includes(n) && !out.includes(n)) out.push(n);
+  }
+  return out.sort((a, b) => a - b);
+}
+
 export function parseFilters(params: URLSearchParams): CandidateFilters {
-  const tier = params.get('company_tier');
-  const tierNum = tier ? Number(tier) : NaN;
   return {
     companies: params.getAll('companies').filter(Boolean),
     schools: params.getAll('schools').filter(Boolean),
-    skills: params.getAll('skills').filter(Boolean),
-    companyTier: Number.isInteger(tierNum) && tierNum >= 1 && tierNum <= 3 ? tierNum : null,
+    companyTiers: tiers(params.getAll('company_tiers')),
+    schoolTiers: tiers(params.getAll('school_tiers')),
     q: params.get('q') ?? '',
     limit: Math.round(num(params.get('limit'), DEFAULT_LIMIT, 1, 100)),
     offset: Math.round(num(params.get('offset'), 0, 0, Number.MAX_SAFE_INTEGER)),
@@ -56,8 +69,8 @@ export function serializeFilters(
   const params = new URLSearchParams();
   for (const c of filters.companies) params.append('companies', c);
   for (const s of filters.schools) params.append('schools', s);
-  for (const s of filters.skills) params.append('skills', s);
-  if (filters.companyTier !== null) params.set('company_tier', String(filters.companyTier));
+  for (const t of filters.companyTiers) params.append('company_tiers', String(t));
+  for (const t of filters.schoolTiers) params.append('school_tiers', String(t));
   if (filters.q) params.set('q', filters.q);
   if (filters.limit !== DEFAULT_LIMIT) params.set('limit', String(filters.limit));
   if (filters.offset > 0) params.set('offset', String(filters.offset));
@@ -71,7 +84,8 @@ export type FilterAction =
   | { type: 'setQuery'; q: string }
   | { type: 'toggle'; field: ListField; value: string }
   | { type: 'setList'; field: ListField; values: string[] }
-  | { type: 'setTier'; tier: number | null }
+  | { type: 'toggleTier'; field: TierField; tier: number }
+  | { type: 'setTiers'; field: TierField; tiers: number[] }
   | { type: 'setPage'; offset: number }
   | { type: 'clear' };
 
@@ -89,8 +103,15 @@ export function filtersReducer(state: CandidateFilters, action: FilterAction): C
     }
     case 'setList':
       return { ...state, [action.field]: action.values, offset: 0 };
-    case 'setTier':
-      return { ...state, companyTier: action.tier, offset: 0 };
+    case 'toggleTier': {
+      const current = state[action.field];
+      const next = current.includes(action.tier)
+        ? current.filter((t) => t !== action.tier)
+        : [...current, action.tier].sort((a, b) => a - b);
+      return { ...state, [action.field]: next, offset: 0 };
+    }
+    case 'setTiers':
+      return { ...state, [action.field]: tiers(action.tiers.map(String)), offset: 0 };
     case 'setPage':
       return { ...state, offset: Math.max(0, action.offset) };
     case 'clear':
@@ -106,28 +127,29 @@ export interface AppliedFilterChip {
 }
 
 /**
- * The applied filters as removable chips, in a stable order: companies, schools, skills, tier.
- * The search text is not a chip; it lives in the search box.
+ * The applied filters as removable chips, in a stable order: company tiers, companies, school
+ * tiers, schools. The search text is not a chip; it lives in the search box.
  */
 export function appliedFilterChips(f: CandidateFilters): AppliedFilterChip[] {
   const chips: AppliedFilterChip[] = [];
-  const lists: ListField[] = ['companies', 'schools', 'skills'];
-  for (const field of lists) {
-    for (const value of f[field]) {
+  const push = (tierField: TierField, listField: ListField, noun: string) => {
+    for (const tier of f[tierField]) {
       chips.push({
-        key: `${field}:${value}`,
-        label: value,
-        remove: { type: 'toggle', field, value },
+        key: `${tierField}:${tier}`,
+        label: `Tier ${tier} ${noun}`,
+        remove: { type: 'toggleTier', field: tierField, tier },
       });
     }
-  }
-  if (f.companyTier !== null) {
-    chips.push({
-      key: 'tier',
-      label: `Tier ${f.companyTier}`,
-      remove: { type: 'setTier', tier: null },
-    });
-  }
+    for (const value of f[listField]) {
+      chips.push({
+        key: `${listField}:${value}`,
+        label: value,
+        remove: { type: 'toggle', field: listField, value },
+      });
+    }
+  };
+  push('companyTiers', 'companies', 'companies');
+  push('schoolTiers', 'schools', 'schools');
   return chips;
 }
 

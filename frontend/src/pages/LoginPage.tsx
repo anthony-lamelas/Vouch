@@ -49,47 +49,56 @@ export function LoginPage() {
   };
 
   return (
-    <div className="grid min-h-screen place-items-center bg-canvas px-6">
-      <div className="w-full max-w-[320px]">
+    <div className="grid min-h-screen place-items-center bg-paper px-6">
+      <div className="w-full max-w-[360px] rounded-card border border-line bg-canvas p-6 shadow-card">
         <Wordmark size="lg" />
-        <p className="mt-2 text-[15px] text-ink-2">Warm referrals from your team's network.</p>
-        <form onSubmit={(e) => void onSubmit(e)} className="mt-8 space-y-4" noValidate>
+        <p className="mt-2 text-[13px] text-muted">Warm referrals from your team's network.</p>
+        <form onSubmit={(e) => void onSubmit(e)} className="mt-5 space-y-3" noValidate>
           {!configured ? (
-            <p role="alert" className="text-[13.5px] text-neg">
+            <p role="alert" className="text-[12px] text-no-text">
               Sign-in is not configured: the API did not return Supabase settings. Set
               AUTH_DISABLED=true locally or configure Supabase on the server.
             </p>
           ) : null}
           <label className="block">
-            <span className="mb-1 block text-[13.5px] font-medium text-ink-2">Email</span>
+            <span className="mb-1 block text-[12px] font-medium tracking-normal text-carbon">
+              Email
+            </span>
             <input
               type="email"
               autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="field w-full"
+              className="field h-9 w-full"
               disabled={!configured || busy}
               required
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[13.5px] font-medium text-ink-2">Password</span>
+            <span className="mb-1 block text-[12px] font-medium tracking-normal text-carbon">
+              Password
+            </span>
             <input
               type="password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="field w-full"
+              className="field h-9 w-full"
               disabled={!configured || busy}
               required
             />
           </label>
           {error ? (
-            <p role="alert" className="text-[13.5px] text-neg">
+            <p role="alert" className="text-[12px] text-no-text">
               {error}
             </p>
           ) : null}
-          <Button type="submit" variant="primary" className="w-full" disabled={!configured || busy}>
+          <Button
+            type="submit"
+            variant="primary"
+            className="mt-1 w-full"
+            disabled={!configured || busy}
+          >
             {busy ? 'Signing in' : 'Sign in'}
           </Button>
         </form>

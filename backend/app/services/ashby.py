@@ -120,7 +120,7 @@ def sync_roles(
                 f"{p.title}. {p.description_plain}", family=family
             )
         if not role.owner_email:
-            role.owner_name, role.owner_email = default_owner(p.department, settings)
+            role.owner_name, role.owner_email = default_owner(p.department, settings, p.title)
     deactivated = 0
     for ashby_id, role in existing.items():
         if ashby_id not in seen and role.is_active:

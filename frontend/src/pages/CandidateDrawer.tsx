@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { keys, useAskPreview, useContact, useCreateRequest } from '../api/queries';
@@ -7,6 +7,7 @@ import type { ConnectionOut, ContactDetail, Reason, RequestDetail } from '../api
 import { Button } from '../components/Button';
 import { Chip } from '../components/Chip';
 import { ErrorState, Skeleton } from '../components/EmptyState';
+import { XIcon } from '../components/Icons';
 import { SectionTitle } from '../components/PageHeader';
 import { StatusPill } from '../components/StatusPill';
 import { StrengthBar } from '../components/StrengthBar';
@@ -51,15 +52,15 @@ export function CandidateDrawer({
 
   return (
     <>
-      <div className="flex items-start gap-3 border-b border-line px-6 pb-4 pt-5">
+      <div className="flex items-start gap-3 border-b border-line px-5 pb-3 pt-4">
         <div className="min-w-0 flex-1">
           {data ? (
             <>
-              <h2 className="font-serif text-[24px] font-medium leading-tight tracking-[-0.01em] text-ink">
+              <h2 className="text-[18px] font-semibold leading-6 tracking-[-0.01em] text-ink">
                 {data.full_name}
               </h2>
-              <p className="mt-1 text-ink-2">{data.headline}</p>
-              <p className="mt-0.5 text-[13px] text-muted">
+              <p className="mt-0.5 text-[13px] text-carbon">{data.headline}</p>
+              <p className="mt-0.5 text-[12px] tracking-normal text-muted">
                 {data.location}
                 <a href={data.linkedin_url} target="_blank" rel="noreferrer" className="link ml-3">
                   LinkedIn
@@ -68,7 +69,7 @@ export function CandidateDrawer({
             </>
           ) : (
             <div className="space-y-2">
-              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-5 w-48" />
               <Skeleton className="h-3.5 w-64" />
             </div>
           )}
@@ -77,15 +78,13 @@ export function CandidateDrawer({
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="-mr-1.5 shrink-0 rounded-control p-1.5 text-muted hover:bg-neutral-soft hover:text-ink"
+          className="-mr-1.5 inline-flex size-7 shrink-0 items-center justify-center rounded-[8px] text-muted hover:bg-haze hover:text-ink"
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-            <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" />
-          </svg>
+          <XIcon />
         </button>
       </div>
 
-      <div className="flex-1 space-y-7 overflow-y-auto px-6 py-5">
+      <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
         {contact.isError ? (
           <ErrorState title="Couldn't load this candidate" error={contact.error} />
         ) : null}
@@ -94,19 +93,19 @@ export function CandidateDrawer({
             {create.isSuccess ? (
               <Sent req={create.data} />
             ) : openRequest ? (
-              <section className="border-l-2 border-line-strong pl-3 text-ink-2">
+              <Notice>
                 Already in the pipeline for{' '}
                 <span className="text-ink">{openRequest.role.title}</span> via{' '}
                 {openRequest.employee.full_name}.{' '}
                 <Link to={`/requests/${openRequest.id}`} className="link">
                   Open the request
                 </Link>
-              </section>
+              </Notice>
             ) : connections.length === 0 ? (
-              <section className="border-l-2 border-line-strong pl-3 text-ink-2">
+              <Notice>
                 No one at Cognition is connected to {firstName(data.full_name)}, so there is nobody
                 to ask.
-              </section>
+              </Notice>
             ) : (
               <Ask
                 contact={data}
@@ -124,20 +123,20 @@ export function CandidateDrawer({
 
             <section>
               <SectionTitle>Experience</SectionTitle>
-              <ol className="ml-1 space-y-2.5 border-l border-line-strong pl-4">
+              <ol className="ml-[3px] space-y-2 border-l border-line pl-3.5 text-[13px]">
                 {data.experiences.map((e, i) => (
                   <li key={i} className="relative">
                     <span
                       aria-hidden
-                      className={`absolute -left-[20.5px] top-[7px] size-[7px] rounded-full ${
-                        e.end ? 'bg-line-strong' : 'bg-spruce'
+                      className={`absolute -left-[17.5px] top-[6px] size-[7px] rounded-full ring-2 ring-canvas ${
+                        e.end ? 'bg-line' : 'bg-cobalt'
                       }`}
                     />
-                    <div className="leading-snug text-ink">
+                    <div className="leading-5 text-ink">
                       <span className="font-medium">{e.title ?? '—'}</span>
-                      <span className="text-ink-2"> at {e.company ?? '—'}</span>
+                      <span className="text-carbon"> at {e.company ?? '—'}</span>
                     </div>
-                    <div className="text-[13px] text-muted tnum">
+                    <div className="text-[12px] tracking-normal text-muted tnum">
                       {e.team ? `${e.team}, ` : ''}
                       {formatSpan(e.start, e.end)}
                     </div>
@@ -149,11 +148,11 @@ export function CandidateDrawer({
             {data.education.length > 0 ? (
               <section>
                 <SectionTitle>Education</SectionTitle>
-                <ul className="space-y-1.5">
+                <ul className="space-y-1 text-[13px]">
                   {data.education.map((ed, i) => (
                     <li key={i}>
                       <div className="text-ink">{ed.school ?? '—'}</div>
-                      <div className="text-[13px] text-muted tnum">
+                      <div className="text-[12px] tracking-normal text-muted tnum">
                         {[ed.degree, ed.field].filter(Boolean).join(', ')}
                         {ed.start_year || ed.end_year
                           ? `, ${String(ed.start_year ?? '?')}–${String(ed.end_year ?? '?')}`
@@ -179,7 +178,7 @@ export function CandidateDrawer({
                 <SectionTitle count={connections.length}>Connections at Cognition</SectionTitle>
                 <ul className="divide-y divide-line">
                   {connections.map((c) => (
-                    <li key={c.employee.id} className="py-2">
+                    <li key={c.employee.id} className="py-1.5">
                       <ConnectionLine c={c} />
                     </li>
                   ))}
@@ -190,18 +189,20 @@ export function CandidateDrawer({
             <section>
               <SectionTitle>Past requests</SectionTitle>
               {data.requests.length === 0 ? (
-                <p className="text-muted">No one has been asked about this person before.</p>
+                <p className="text-[13px] text-muted">
+                  No one has been asked about this person before.
+                </p>
               ) : (
-                <ul className="divide-y divide-line">
+                <ul className="divide-y divide-line text-[13px]">
                   {data.requests.map((r) => (
-                    <li key={r.id} className="flex items-start justify-between gap-3 py-2">
+                    <li key={r.id} className="flex items-center justify-between gap-3 py-1.5">
                       <div className="min-w-0">
-                        <Link to={`/requests/${r.id}`} className="link">
+                        <Link to={`/requests/${r.id}`} className="link font-medium">
                           {r.role.title}
                         </Link>
-                        <div className="text-[13px] text-muted">
+                        <span className="ml-2 text-[12px] tracking-normal text-muted">
                           asked {r.employee.full_name} {formatRelative(r.created_at)}
-                        </div>
+                        </span>
                       </div>
                       <StatusPill status={r.status} />
                     </li>
@@ -220,13 +221,19 @@ function sortByStrength(list: ConnectionOut[]) {
   return [...list].sort((a, b) => b.strength - a.strength);
 }
 
+function Notice({ children }: { children: ReactNode }) {
+  return (
+    <section className="rounded-card bg-paper p-3 text-[13px] text-carbon">{children}</section>
+  );
+}
+
 function ConnectionLine({ c }: { c: ConnectionOut }) {
   return (
-    <div className="min-w-0">
-      <div className="flex items-baseline justify-between gap-3">
+    <div className="min-w-0 text-[13px]">
+      <div className="flex items-center justify-between gap-3">
         <span className="min-w-0 truncate">
           <span className="font-medium text-ink">{c.employee.full_name}</span>
-          <span className="text-[13px] text-muted">
+          <span className="text-[12px] tracking-normal text-muted">
             {' '}
             {c.employee.title}
             {c.employee.team ? `, ${c.employee.team}` : ''}
@@ -234,7 +241,9 @@ function ConnectionLine({ c }: { c: ConnectionOut }) {
         </span>
         <StrengthBar value={c.strength} />
       </div>
-      {c.shared_history ? <div className="text-[13px] text-ink-2">{c.shared_history}</div> : null}
+      {c.shared_history ? (
+        <div className="text-[12px] tracking-normal text-carbon">{c.shared_history}</div>
+      ) : null}
     </div>
   );
 }
@@ -244,23 +253,23 @@ function WhyList({ reasons }: { reasons: Reason[] | null }) {
   return (
     <section>
       <SectionTitle>Why this candidate</SectionTitle>
-      <ul className="space-y-1">
+      <dl className="divide-y divide-line text-[13px]">
         {reasons.map((r, i) => (
-          <li key={i} className="flex flex-wrap items-baseline gap-x-2">
-            <span className="text-ink">{r.label}</span>
-            {r.detail ? <span className="text-[13px] text-muted">{r.detail}</span> : null}
-          </li>
+          <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-x-4 py-1.5">
+            <dt className="font-medium text-ink">{r.label}</dt>
+            <dd className="text-muted">{r.detail ?? ''}</dd>
+          </div>
         ))}
-      </ul>
+      </dl>
     </section>
   );
 }
 
 function Sent({ req }: { req: RequestDetail }) {
   return (
-    <section className="border-l-2 border-spruce pl-3" aria-live="polite">
-      <p className="font-medium text-ink">Sent to {req.employee.full_name}.</p>
-      <p className="mt-0.5 text-[13.5px] text-ink-2">
+    <section className="rounded-card bg-yes-bg p-3 text-[13px] text-yes-text" aria-live="polite">
+      <p className="font-semibold">Sent to {req.employee.full_name}.</p>
+      <p className="mt-0.5">
         {firstName(req.employee.full_name)} has the message and the role details for{' '}
         {req.role.title}.{' '}
         <Link to={`/requests/${req.id}`} className="link">
@@ -332,23 +341,25 @@ function Ask({
   };
 
   return (
-    <section aria-labelledby="ask-title">
+    <section aria-labelledby="ask-title" className="rounded-card bg-paper p-3.5">
       <div className="mb-2 flex items-baseline justify-between gap-4">
-        <h2 id="ask-title" className="text-[14px] font-semibold text-ink">
+        <h2 id="ask-title" className="text-[13px] font-semibold text-ink">
           Ask
         </h2>
-        <span className="truncate text-[13px] text-muted">for {roleTitle || 'this role'}</span>
+        <span className="truncate text-[12px] tracking-normal text-muted">
+          for {roleTitle || 'this role'}
+        </span>
       </div>
 
-      <fieldset className="-mx-2">
+      <fieldset className="-mx-1.5">
         <legend className="sr-only">Who to ask</legend>
         {connections.map((c, i) => {
           const checked = c.employee.id === employeeId;
           return (
             <label
               key={c.employee.id}
-              className={`flex cursor-pointer items-start gap-3 rounded-control px-2 py-2 ${
-                checked ? 'bg-spruce-soft' : 'hover:bg-canvas'
+              className={`flex cursor-pointer items-start gap-2.5 rounded-[8px] px-1.5 py-1.5 ${
+                checked ? 'bg-ice' : 'hover:bg-haze'
               }`}
             >
               <input
@@ -357,12 +368,14 @@ function Ask({
                 value={c.employee.id}
                 checked={checked}
                 onChange={() => onPick(c.employee.id)}
-                className="mt-[3px] accent-spruce"
+                className="mt-[3px] accent-cobalt"
               />
               <div className="min-w-0 flex-1">
                 <ConnectionLine c={c} />
                 {i === 0 && connections.length > 1 ? (
-                  <span className="text-[12.5px] text-spruce-ink">Strongest connection</span>
+                  <span className="text-[12px] tracking-normal text-cobalt">
+                    Strongest connection
+                  </span>
                 ) : null}
               </div>
             </label>
@@ -370,15 +383,15 @@ function Ask({
         })}
       </fieldset>
 
-      <label className="mt-4 block">
-        <span className="mb-1 flex items-baseline justify-between text-[13.5px]">
-          <span className="font-medium text-ink-2">Message to {chosenFirst}</span>
+      <label className="mt-3 block">
+        <span className="mb-1 flex items-baseline justify-between text-[12px] tracking-normal">
+          <span className="font-medium text-carbon">Message to {chosenFirst}</span>
           <span className="text-muted">Sent as a Slack DM. Edit it before sending.</span>
         </span>
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          className="textarea-field min-h-[150px] w-full text-[14px]"
+          className="textarea-field min-h-[140px] w-full text-[13px]"
           maxLength={2000}
           disabled={preview.isPending || create.isPending}
           placeholder={preview.isPending ? 'Drafting a message' : ''}
@@ -386,21 +399,21 @@ function Ask({
         />
       </label>
       {preview.isError ? (
-        <p role="alert" className="mt-1 text-[13.5px] text-neg">
+        <p role="alert" className="mt-1 text-[12px] text-no-text">
           Couldn't draft the message. Write one, or try another employee.
         </p>
       ) : null}
 
-      <div className="mt-3 flex items-center gap-3">
+      <div className="mt-2.5 flex items-center gap-3">
         <Button
           variant="primary"
           disabled={!employeeId || !message.trim() || create.isPending}
           onClick={send}
         >
-          {create.isPending ? 'Sending' : `Send to ${chosenFirst}`}
+          {create.isPending ? 'Sending' : 'Send request'}
         </Button>
         {errorText ? (
-          <p role="alert" className="text-[13.5px] text-neg">
+          <p role="alert" className="text-[12px] text-no-text">
             {errorText}
           </p>
         ) : null}

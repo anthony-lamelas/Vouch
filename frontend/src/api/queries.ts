@@ -56,8 +56,10 @@ export function useCandidates(roleId: string, filters: CandidateFilters) {
         {
           companies: filters.companies,
           schools: filters.schools,
-          skills: filters.skills,
-          company_tier: filters.companyTier,
+          company_tiers: filters.companyTiers,
+          school_tiers: filters.schoolTiers,
+          // People already in the pipeline are shown in the role's request strip instead.
+          exclude_requested: true,
           q: filters.q,
           limit: filters.limit,
           offset: filters.offset,

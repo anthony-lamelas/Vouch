@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 
 from app.api.deps import DB, User
 from app.api.serializers import connection_out, connections_by_contact
-from app.models import CompanyTier, Contact, MatchScore, ReferralRequest, Role
+from app.models import CompanyTier, Contact, MatchScore, ReferralRequest, Role, SchoolTier
 from app.schemas import (
     ActiveRequestBrief,
     CandidateOut,
@@ -93,6 +93,9 @@ def list_candidates(
     schools: Annotated[list[str] | None, Query()] = None,
     skills: Annotated[list[str] | None, Query()] = None,
     company_tier: Annotated[int | None, Query(ge=1, le=3)] = None,
+    company_tiers: Annotated[list[int] | None, Query()] = None,
+    school_tiers: Annotated[list[int] | None, Query()] = None,
+    exclude_requested: bool = False,
     q: str | None = None,
     min_score: Annotated[float, Query(ge=0, le=1)] = 0.0,
     limit: Annotated[int, Query(ge=1, le=100)] = 25,
@@ -110,6 +113,20 @@ def list_candidates(
     if company_tier:
         tier_names = db.scalars(select(CompanyTier.name).where(CompanyTier.tier <= company_tier))
         company_set.update(tier_names)
+    if company_tiers:
+        company_set.update(
+            db.scalars(select(CompanyTier.name).where(CompanyTier.tier.in_(company_tiers)))
+        )
+    school_set = set(schools or [])
+    if school_tiers:
+        school_set.update(
+            db.scalars(select(SchoolTier.name).where(SchoolTier.tier.in_(school_tiers)))
+        )
+    if exclude_requested:
+        open_contacts = select(ReferralRequest.contact_id).where(
+            ReferralRequest.status.in_([st.value for st in ACTIVE_STATUSES])
+        )
+        stmt = stmt.where(Contact.id.not_in(open_contacts))
     if company_set:
         stmt = stmt.where(
             or_(
@@ -119,12 +136,12 @@ def list_candidates(
                 ]
             )
         )
-    if schools:
+    if school_set:
         stmt = stmt.where(
             or_(
                 *[
                     Contact.education.op("@>")(literal([{"school": sc}], type_=JSONB))
-                    for sc in schools
+                    for sc in sorted(school_set)
                 ]
             )
         )

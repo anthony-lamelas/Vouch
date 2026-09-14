@@ -1,39 +1,28 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useRequests, useRoles } from '../api/queries';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useRoles } from '../api/queries';
 import type { RoleSummary } from '../api/types';
 import { Button } from '../components/Button';
+import { RemovableChip } from '../components/Chip';
 import { EmptyState, ErrorState, TableSkeleton } from '../components/EmptyState';
+import { GroupBand } from '../components/GroupBand';
+import { MultiSelect } from '../components/MultiSelect';
 import { PageHeader } from '../components/PageHeader';
-import { Segmented } from '../components/Segmented';
-import { plural } from '../lib/format';
-import { computeNeedsYou } from '../lib/needsYou';
-
-function NeedsYou() {
-  const mine = useRequests({ mine: true, active_only: true });
-  const items = useMemo(() => computeNeedsYou(mine.data?.items ?? []), [mine.data]);
-  if (items.length === 0) return null;
-  return (
-    <section
-      aria-labelledby="needs-you"
-      className="mb-6 border-l-2 border-ochre bg-ochre-soft px-4 py-3"
-    >
-      <h2 id="needs-you" className="text-[14px] font-semibold text-ochre">
-        Needs you
-      </h2>
-      <ul className="mt-1 space-y-0.5 text-[14px] text-ink">
-        {items.map((item) => (
-          <li key={item.key}>
-            {item.lead}{' '}
-            <Link to={item.to} className="link">
-              {item.action}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
+import { Tabs } from '../components/Tabs';
+import { formatCount } from '../lib/format';
+import {
+  EMPTY_ROLE_FILTERS,
+  ROLE_FIELDS,
+  ROLE_FIELD_LABELS,
+  activeRoleFilterCount,
+  appliedRoleChips,
+  applyRoleFilters,
+  parseRoleFilters,
+  roleFacets,
+  toggleRoleFilter,
+  writeRoleFilters,
+  type RoleFilters,
+} from '../lib/roleFilters';
 
 function groupByDepartment(roles: RoleSummary[]): [string, RoleSummary[]][] {
   const map = new Map<string, RoleSummary[]>();
@@ -61,90 +50,138 @@ export function RolesPage() {
     setParams(nextParams, { replace: true });
   };
 
+  const filters = useMemo(() => parseRoleFilters(params), [params]);
+  const setFilters = (next: RoleFilters) =>
+    setParams(writeRoleFilters(params, next), { replace: true });
+
+  const inScope = useMemo(
+    () => (roles.data ?? []).filter((r) => scope === 'all' || r.is_mine),
+    [roles.data, scope],
+  );
+  const facets = useMemo(() => roleFacets(inScope), [inScope]);
+
   const filtered = useMemo(() => {
-    const list = (roles.data ?? []).filter((r) => scope === 'all' || r.is_mine);
+    const list = applyRoleFilters(inScope, filters);
     const needle = q.trim().toLowerCase();
     if (!needle) return list;
     return list.filter((r) =>
       [r.title, r.team, r.location, r.department].some((s) => s.toLowerCase().includes(needle)),
     );
-  }, [roles.data, q, scope]);
+  }, [inScope, filters, q]);
 
   const groups = useMemo(() => groupByDepartment(filtered), [filtered]);
+  const chips = appliedRoleChips(filters);
+  const nFilters = activeRoleFilterCount(filters);
   const open = (id: string) => navigate(`/roles/${id}`);
 
   return (
     <div>
-      <NeedsYou />
-      <PageHeader title="Roles">
-        <Segmented
-          label="Role scope"
-          value={scope}
-          onChange={setScope}
-          options={[
-            { value: 'mine', label: `My roles${roles.data ? ` · ${String(mineCount)}` : ''}` },
-            {
-              value: 'all',
-              label: `All roles${roles.data ? ` · ${String(roles.data.length)}` : ''}`,
-            },
-          ]}
-        />
+      <PageHeader
+        title="Roles"
+        tabs={
+          <Tabs
+            label="Role scope"
+            value={scope}
+            onChange={setScope}
+            options={[
+              { value: 'mine', label: 'My roles', count: roles.data ? mineCount : undefined },
+              { value: 'all', label: 'All roles', count: roles.data?.length },
+            ]}
+          />
+        }
+      />
+
+      <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Role filters">
         <input
           type="search"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search roles"
           aria-label="Search roles"
-          className="field w-[260px]"
+          className="field h-8 w-[240px] text-[13px]"
         />
-      </PageHeader>
+        {ROLE_FIELDS.map((field) => (
+          <MultiSelect
+            key={field}
+            label={ROLE_FIELD_LABELS[field]}
+            options={facets[field]}
+            selected={filters[field]}
+            onChange={(values) => setFilters({ ...filters, [field]: values })}
+          />
+        ))}
+        {chips.length > 0 ? (
+          <>
+            <span aria-hidden className="mx-1 h-4 w-px bg-line" />
+            {chips.map((c) => (
+              <RemovableChip
+                key={c.key}
+                label={c.label}
+                onRemove={() => setFilters(toggleRoleFilter(filters, c.field, c.value))}
+              />
+            ))}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-[12px]"
+              onClick={() => setFilters(EMPTY_ROLE_FILTERS)}
+            >
+              Clear all
+            </Button>
+          </>
+        ) : null}
+        <p className="ml-auto text-[12px] text-muted tnum" aria-live="polite">
+          {roles.data
+            ? `${formatCount(filtered.length)} ${filtered.length === 1 ? 'role' : 'roles'}`
+            : ' '}
+        </p>
+      </div>
 
-      {roles.isPending ? <TableSkeleton rows={10} /> : null}
-      {roles.isError ? <ErrorState title="Couldn't load roles" error={roles.error} /> : null}
-      {roles.data && filtered.length === 0 ? (
-        <EmptyState
-          title={
-            q
-              ? `No roles match “${q}”`
-              : scope === 'mine'
-                ? 'No roles are assigned to you.'
-                : 'No open roles'
-          }
-          action={
-            q ? (
-              <Button onClick={() => setQ('')}>Clear the search</Button>
+      <div className="mt-3">
+        {roles.isPending ? <TableSkeleton rows={10} cols={5} /> : null}
+        {roles.isError ? <ErrorState title="Couldn't load roles" error={roles.error} /> : null}
+        {roles.data && filtered.length === 0 ? (
+          <EmptyState>
+            {q || nFilters > 0 ? (
+              <>
+                No roles match {q ? `“${q}”` : 'these filters'}.{' '}
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() => {
+                    setQ('');
+                    setFilters(EMPTY_ROLE_FILTERS);
+                  }}
+                >
+                  Clear all filters
+                </button>
+              </>
             ) : scope === 'mine' ? (
-              <Button onClick={() => setScope('all')}>Show all roles</Button>
-            ) : undefined
-          }
-        >
-          {q ? 'Try a different word.' : scope === 'mine' ? null : 'Roles sync from Ashby.'}
-        </EmptyState>
-      ) : null}
+              <>
+                No roles are assigned to you.{' '}
+                <button type="button" className="link" onClick={() => setScope('all')}>
+                  Show all roles
+                </button>
+              </>
+            ) : (
+              'No open roles. Roles sync from Ashby.'
+            )}
+          </EmptyState>
+        ) : null}
 
-      {groups.length > 0 ? (
-        <div className="border-y border-line bg-surface">
+        {groups.length > 0 ? (
           <table className="data-table">
             <thead>
               <tr>
-                <th className="w-[36%]">Role</th>
+                <th className="w-[40%]">Role</th>
                 <th>Team</th>
                 <th>Location</th>
-                <th>Owner</th>
                 <th className="num">Strong matches</th>
                 <th className="num">Open requests</th>
               </tr>
             </thead>
             {groups.map(([dept, list]) => (
               <tbody key={dept} aria-label={dept}>
-                <tr>
-                  <th colSpan={6} scope="rowgroup" className="group">
-                    {dept}
-                    <span className="ml-2 text-[14px] font-normal text-muted tnum">
-                      {list.length}
-                    </span>
-                  </th>
-                </tr>
+                <GroupBand title={dept} count={list.length} colSpan={5} />
                 {list.map((r) => (
                   <tr
                     key={r.id}
@@ -158,31 +195,26 @@ export function RolesPage() {
                       }
                     }}
                   >
-                    <td>
-                      <span className="name">{r.title}</span>
-                    </td>
-                    <td className="text-ink-2">{r.team}</td>
-                    <td className="text-ink-2">
+                    <td className="font-medium text-ink">{r.title}</td>
+                    <td className="text-carbon">{r.team}</td>
+                    <td className="text-carbon">
                       {r.location}
-                      {r.is_remote ? <span className="ml-1.5 text-muted">Remote</span> : null}
+                      {r.is_remote ? <span className="ml-1.5 text-caption">Remote</span> : null}
                     </td>
-                    <td className="text-ink-2">
-                      {r.is_mine ? 'you' : (r.owner_name ?? <span className="text-muted">—</span>)}
-                    </td>
-                    <td className="num tnum text-ink-2">
+                    <td className="num text-carbon tnum">
                       {r.strong_match_count > 0 ? (
-                        plural(r.strong_match_count, 'strong match', 'strong matches')
+                        `${formatCount(r.strong_match_count)} ${
+                          r.strong_match_count === 1 ? 'match' : 'matches'
+                        }`
                       ) : (
-                        <span className="text-muted">none yet</span>
+                        <span className="text-caption">none yet</span>
                       )}
                     </td>
                     <td className="num tnum">
                       {r.active_request_count > 0 ? (
-                        <span className="font-medium text-spruce-ink">
-                          {r.active_request_count}
-                        </span>
+                        <span className="text-cobalt">{r.active_request_count}</span>
                       ) : (
-                        <span className="text-muted">0</span>
+                        <span className="text-caption">0</span>
                       )}
                     </td>
                   </tr>
@@ -190,8 +222,8 @@ export function RolesPage() {
               </tbody>
             ))}
           </table>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 }

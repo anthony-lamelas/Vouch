@@ -1,6 +1,6 @@
 import type { Status } from '../api/types';
 
-export type Tone = 'neutral' | 'positive' | 'warning' | 'negative';
+export type Tone = 'neutral' | 'positive' | 'warning' | 'negative' | 'info';
 
 export const STATUS_ORDER: readonly Status[] = [
   'requested',
@@ -21,9 +21,10 @@ export const STATUS_LABELS: Record<Status, string> = {
   closed: 'Closed',
 };
 
+/** Maps onto the semantic tag colours in docs/design/attio-style.md. */
 export const STATUS_TONES: Record<Status, Tone> = {
-  requested: 'neutral',
-  employee_accepted: 'positive',
+  requested: 'warning',
+  employee_accepted: 'info',
   employee_declined: 'negative',
   candidate_interested: 'positive',
   candidate_declined: 'negative',

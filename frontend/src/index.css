@@ -1,45 +1,59 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens. The default Tailwind palette is wiped so every neutral in the app carries the
- * slight green cast below; there is no pure grey anywhere.
+ * Design tokens. Linear for the system (sidebar, density, grouped lists), Attio for the
+ * styling (see docs/design/attio-style.md). The default Tailwind palette is wiped so every
+ * colour in the app comes from this list.
  */
 @theme {
   --color-*: initial;
-  --color-canvas: #f2f4f1;
-  --color-surface: #ffffff;
-  --color-ink: #161b19;
-  --color-ink-2: #4e5955;
-  --color-muted: #7a857f;
-  --color-line: #dfe4e0;
-  --color-line-strong: #c9d1cc;
+  --color-canvas: #ffffff;
+  --color-paper: #f4f5f6;
+  --color-haze: #eeeff1;
+  --color-line: #e4e7ec;
+  --color-ink: #1c1d1f;
+  --color-graphite: #232529;
+  --color-carbon: #2e3238;
+  --color-muted: #6f7988;
+  --color-caption: #8f99a8;
+  --color-placeholder: #9fa1a7;
+  --color-cobalt: #266df0;
+  --color-cobalt-hover: #407ff2;
+  --color-ice: #e4edff;
+  --color-periwinkle: #bad0fa;
+  --color-white: #ffffff;
 
-  --color-spruce: #1e5c4a;
-  --color-spruce-hover: #174a3c;
-  --color-spruce-soft: #e4efea;
-  --color-spruce-ink: #164236;
-
-  --color-ochre: #a85a12;
-  --color-ochre-soft: #f6ebdd;
-
-  --color-pos: #1e5c4a;
-  --color-pos-soft: #e4efea;
-  --color-neg: #8c2f2f;
-  --color-neg-soft: #f5e4e4;
-  --color-neutral-soft: #eef1ef;
+  /* Semantic soft tags */
+  --color-wait-bg: #fff4d6;
+  --color-wait-text: #8a5a00;
+  --color-wait-dot: #e0a100;
+  --color-reach-bg: #e4edff;
+  --color-reach-text: #1d4ed8;
+  --color-reach-dot: #266df0;
+  --color-yes-bg: #e3f6ea;
+  --color-yes-text: #14683d;
+  --color-yes-dot: #22a06b;
+  --color-no-bg: #fce8e8;
+  --color-no-text: #a32d2d;
+  --color-no-dot: #d64545;
+  --color-closed-bg: #eeeff1;
+  --color-closed-text: #505967;
+  --color-closed-dot: #8f99a8;
+  --color-needs-bg: #fff1d6;
+  --color-needs-text: #7a4b00;
+  --color-needs-rule: #e0a100;
 
   --font-sans:
-    'Schibsted Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial,
-    sans-serif;
-  --font-serif:
-    'Newsreader', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman',
-    serif;
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
 
-  --radius-control: 6px;
-  --radius-drawer: 8px;
+  --radius-control: 10px;
+  --radius-tag: 7px;
+  --radius-card: 12px;
 
   --shadow-*: initial;
-  --shadow-drawer: -16px 0 40px -16px rgb(22 27 25 / 0.22);
+  --shadow-card: rgba(28, 40, 64, 0.1) 0 2px 3px -2px, rgba(28, 40, 64, 0.04) 0 4px 6px -2px;
+  --shadow-pop: rgba(28, 40, 64, 0.14) 0 10px 28px -10px, rgba(28, 40, 64, 0.06) 0 2px 6px -2px;
+  --shadow-drawer: rgba(28, 40, 64, 0.18) -12px 0 40px -12px, rgba(28, 40, 64, 0.08) 0 0 0 1px;
 }
 
 @layer base {
@@ -51,18 +65,21 @@
     margin: 0;
     font-family: var(--font-sans);
     font-size: 14px;
-    line-height: 1.45;
+    font-weight: 500;
+    line-height: 1.43;
+    letter-spacing: -0.02em;
+    font-feature-settings: 'ss03', 'cv11';
     color: var(--color-ink);
     background: var(--color-canvas);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
   ::selection {
-    background: var(--color-spruce-soft);
-    color: var(--color-spruce-ink);
+    background: var(--color-ice);
+    color: var(--color-ink);
   }
   :focus-visible {
-    outline: 2px solid var(--color-spruce);
+    outline: 2px solid var(--color-cobalt);
     outline-offset: 2px;
   }
   button,
@@ -70,6 +87,7 @@
   select,
   textarea {
     font: inherit;
+    letter-spacing: inherit;
     color: inherit;
   }
   button {
@@ -90,6 +108,7 @@
   ul,
   ol,
   dl,
+  dd,
   figure,
   blockquote {
     margin: 0;
@@ -98,6 +117,9 @@
   ol {
     padding: 0;
     list-style: none;
+  }
+  ::placeholder {
+    color: var(--color-placeholder);
   }
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -113,31 +135,23 @@
 /* Tabular numerals for anything that lines up in columns. */
 @utility tnum {
   font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: 'tnum' 1;
+  font-feature-settings:
+    'tnum' 1,
+    'ss03',
+    'cv11';
 }
 
 @utility link {
-  color: var(--color-spruce);
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--color-spruce) 35%, transparent);
-  text-underline-offset: 2px;
+  color: var(--color-cobalt);
   border-radius: 2px;
   &:hover {
-    text-decoration-color: var(--color-spruce);
+    color: var(--color-cobalt-hover);
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 }
 
-/* A person's name: the one thing on every screen that gets its own voice. */
-@utility name {
-  font-family: var(--font-serif);
-  font-weight: 500;
-  font-size: 16px;
-  line-height: 1.25;
-  letter-spacing: -0.005em;
-  color: var(--color-ink);
-}
-
-/* Data tables: no box around them, tone and 1px rules do the separating. */
+/* Data tables: 36px rows, 12px headers, haze hover, coloured group bands. */
 @utility data-table {
   width: 100%;
   border-collapse: separate;
@@ -145,48 +159,49 @@
   font-size: 14px;
   & thead th {
     position: sticky;
-    top: 48px;
+    top: 0;
     z-index: 2;
-    background: var(--color-surface);
+    height: 32px;
+    background: var(--color-canvas);
     text-align: left;
     font-weight: 500;
-    font-size: 13px;
+    font-size: 14px;
+    letter-spacing: 0;
     color: var(--color-muted);
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--color-line-strong);
+    padding: 0 12px;
+    border-bottom: 1px solid var(--color-line);
     white-space: nowrap;
   }
   & tbody td {
-    padding: 10px 12px;
+    height: 36px;
+    padding: 8px 12px;
     border-bottom: 1px solid var(--color-line);
-    vertical-align: top;
+    vertical-align: middle;
   }
-  & tbody th.group {
-    position: sticky;
-    top: 81px;
-    z-index: 1;
+  & tbody th.band {
+    height: 44px;
+    padding: 0 12px;
     text-align: left;
-    padding: 14px 12px 6px;
-    background: var(--color-surface);
-    border-bottom: 1px solid var(--color-line);
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 600;
-    color: var(--color-ink);
+    letter-spacing: -0.01em;
+    border-bottom: 1px solid var(--color-line);
+    white-space: nowrap;
   }
   & tbody tr.is-clickable {
     cursor: pointer;
   }
-  & tbody tr.is-clickable:hover {
-    background: var(--color-canvas);
+  & tbody tr.is-clickable:hover > td {
+    background: var(--color-haze);
   }
-  & tbody tr.is-selected {
-    background: var(--color-spruce-soft);
+  & tbody tr.is-selected > td {
+    background: var(--color-ice);
   }
   & tbody tr.is-stale > td:first-child {
-    box-shadow: inset 2px 0 0 var(--color-ochre);
+    box-shadow: inset 3px 0 0 var(--color-needs-rule);
   }
   & tbody tr:focus-visible {
-    outline: 2px solid var(--color-spruce);
+    outline: 2px solid var(--color-cobalt);
     outline-offset: -2px;
   }
   & td.num,
@@ -195,55 +210,48 @@
   }
 }
 
-/* Form controls */
+/* Form controls: 10px radius, 1px line, cobalt focus. */
 @utility field {
-  height: 32px;
   padding: 0 10px;
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid var(--color-line);
   border-radius: var(--radius-control);
-  background: var(--color-surface);
+  background: var(--color-canvas);
   color: var(--color-ink);
-  &::placeholder {
-    color: var(--color-muted);
-  }
   &:hover {
-    border-color: var(--color-muted);
+    border-color: var(--color-caption);
   }
   &:focus-visible {
     outline-offset: 0;
-    border-color: var(--color-spruce);
+    border-color: var(--color-cobalt);
   }
   &:disabled {
-    background: var(--color-neutral-soft);
+    background: var(--color-paper);
     color: var(--color-muted);
   }
 }
 
 @utility textarea-field {
   padding: 8px 10px;
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid var(--color-line);
   border-radius: var(--radius-control);
-  background: var(--color-surface);
+  background: var(--color-canvas);
   color: var(--color-ink);
   line-height: 1.5;
   resize: vertical;
   min-height: 80px;
-  &::placeholder {
-    color: var(--color-muted);
-  }
   &:focus-visible {
     outline-offset: 0;
-    border-color: var(--color-spruce);
+    border-color: var(--color-cobalt);
   }
   &:disabled {
-    background: var(--color-neutral-soft);
+    background: var(--color-paper);
     color: var(--color-muted);
   }
 }
 
 @keyframes drawer-in {
   from {
-    transform: translateX(24px);
+    transform: translateX(16px);
     opacity: 0;
   }
   to {
@@ -252,5 +260,5 @@
   }
 }
 @utility animate-drawer-in {
-  animation: drawer-in 160ms ease-out;
+  animation: drawer-in 140ms ease-out;
 }

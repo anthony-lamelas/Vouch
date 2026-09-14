@@ -1,20 +1,35 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { filterPillClass } from '../lib/classes';
+import { PlusIcon } from './Icons';
 import { TierBadge } from './TierBadge';
 
 export interface Option {
   value: string;
+  /** Display text when it differs from the value, e.g. "Tier 1" for value "1". */
+  label?: string;
   tier?: number;
+  /** How many rows carry this value; shown muted on the right. */
+  count?: number;
 }
 
-/**
- * An add-button ("+ Company") that opens a searchable checkbox list. Applied values are shown
- * elsewhere as removable chips, so the trigger itself stays quiet.
- */
+/** A separately-controlled group shown above the main list, e.g. tiers before companies. */
+export interface PinnedGroup {
+  options: Option[];
+  selected: string[];
+  onChange: (values: string[]) => void;
+}
+
+function matches(o: Option, q: string) {
+  return !q || (o.label ?? o.value).toLowerCase().includes(q) || o.value.toLowerCase().includes(q);
+}
+
+/** Linear-style filter pill: "+ Company" that opens a searchable checkbox list. */
 export function MultiSelect({
   label,
   options,
   selected,
   onChange,
+  pinned,
   placeholder = 'Search',
 }: {
   /** Singular noun, e.g. "Company". */
@@ -22,6 +37,7 @@ export function MultiSelect({
   options: Option[];
   selected: string[];
   onChange: (values: string[]) => void;
+  pinned?: PinnedGroup;
   placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -47,20 +63,30 @@ export function MultiSelect({
     };
   }, [open]);
 
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const list = q ? options.filter((o) => o.value.toLowerCase().includes(q)) : options;
-    // Selected first so it is obvious what is applied.
-    return [...list].sort((a, b) => {
-      const sa = selected.includes(a.value) ? 0 : 1;
-      const sb = selected.includes(b.value) ? 0 : 1;
-      return sa - sb;
-    });
-  }, [options, query, selected]);
+  const q = query.trim().toLowerCase();
+  // Callers own the order (tier, then name, with anything pinned first).
+  const visible = useMemo(() => options.filter((o) => matches(o, q)), [options, q]);
+  const pinnedVisible = useMemo(
+    () => (pinned ? pinned.options.filter((o) => matches(o, q)) : []),
+    [pinned, q],
+  );
 
-  const toggle = (value: string) => {
-    onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]);
+  const toggleIn = (list: string[], value: string, emit: (v: string[]) => void) => {
+    emit(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
   };
+
+  const row = (o: Option, checked: boolean, onToggle: () => void) => (
+    <li key={o.value} role="option" aria-selected={checked}>
+      <label className="flex h-7 cursor-pointer items-center gap-2 px-2.5 text-[13px] hover:bg-haze">
+        <input type="checkbox" checked={checked} onChange={onToggle} className="accent-cobalt" />
+        <span className="flex-1 truncate">{o.label ?? o.value}</span>
+        {o.tier !== undefined ? <TierBadge tier={o.tier} /> : null}
+        {o.count !== undefined ? (
+          <span className="text-[12px] tracking-normal text-muted tnum">{o.count}</span>
+        ) : null}
+      </label>
+    </li>
+  );
 
   const lower = label.toLowerCase();
   return (
@@ -72,26 +98,20 @@ export function MultiSelect({
         aria-controls={listId}
         aria-label={`Add ${lower} filter`}
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex h-8 items-center gap-1 rounded-control border px-2.5 text-[14px] transition-colors ${
-          open
-            ? 'border-spruce text-spruce-ink'
-            : 'border-line-strong text-ink-2 hover:border-ink-2 hover:text-ink'
-        }`}
+        className={filterPillClass(open)}
       >
-        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
-          <path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
+        <PlusIcon size={10} />
         {label}
       </button>
       {open ? (
-        <div className="absolute left-0 top-[calc(100%+4px)] z-30 w-[280px] rounded-control border border-line-strong bg-surface">
-          <div className="border-b border-line p-2">
+        <div className="absolute left-0 top-[calc(100%+4px)] z-30 w-[260px] overflow-hidden rounded-card border border-line bg-canvas shadow-pop">
+          <div className="border-b border-line p-1.5">
             <input
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={placeholder}
-              className="field h-7 w-full text-[13.5px]"
+              className="field h-7 w-full rounded-[7px] text-[13px]"
               aria-label={`Search ${lower}`}
             />
           </div>
@@ -101,27 +121,22 @@ export function MultiSelect({
             aria-multiselectable
             className="max-h-[280px] overflow-auto py-1"
           >
-            {visible.length === 0 ? (
-              <li className="px-3 py-2 text-[13.5px] text-muted">No matches</li>
-            ) : (
-              visible.map((o) => {
-                const checked = selected.includes(o.value);
-                return (
-                  <li key={o.value} role="option" aria-selected={checked}>
-                    <label className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[13.5px] hover:bg-canvas">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggle(o.value)}
-                        className="accent-spruce"
-                      />
-                      <span className="flex-1 truncate">{o.value}</span>
-                      {o.tier !== undefined ? <TierBadge tier={o.tier} /> : null}
-                    </label>
-                  </li>
-                );
-              })
+            {pinned
+              ? pinnedVisible.map((o) =>
+                  row(o, pinned.selected.includes(o.value), () =>
+                    toggleIn(pinned.selected, o.value, pinned.onChange),
+                  ),
+                )
+              : null}
+            {pinnedVisible.length > 0 && visible.length > 0 ? (
+              <li role="presentation" aria-hidden className="my-1 border-t border-line" />
+            ) : null}
+            {visible.map((o) =>
+              row(o, selected.includes(o.value), () => toggleIn(selected, o.value, onChange)),
             )}
+            {visible.length === 0 && pinnedVisible.length === 0 ? (
+              <li className="px-3 py-1.5 text-[13px] text-muted">No matches</li>
+            ) : null}
           </ul>
         </div>
       ) : null}

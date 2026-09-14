@@ -21,9 +21,8 @@ SYNTHETIC_RECRUITERS: Final[dict[str, tuple[str, str]]] = {
     "General & Administrative": ("Priyanka Shah", "priyanka.shah@cognition.ai"),
 }
 FALLBACK_RECRUITER: Final[tuple[str, str]] = ("Sam Okafor", "sam.okafor@cognition.ai")
-DEMO_DEPARTMENTS: Final[frozenset[str]] = frozenset(
-    {"Research & Development", "Customer Engineering"}
-)
+# The demo login owns these reqs (all regional variants); everyone else is synthetic.
+DEMO_TITLE_PREFIXES: Final[tuple[str, ...]] = ("AI Support Engineer", "Applied AI Engineer")
 
 
 def name_from_email(email: str) -> str:
@@ -34,9 +33,9 @@ def name_from_email(email: str) -> str:
     return " ".join(words) or email
 
 
-def default_owner(department: str, settings: Settings) -> tuple[str, str]:
-    """Returns (owner_name, owner_email) for a role in this department."""
-    if department in DEMO_DEPARTMENTS and settings.demo_recruiter_email:
+def default_owner(department: str, settings: Settings, title: str = "") -> tuple[str, str]:
+    """Returns (owner_name, owner_email) for a role."""
+    if settings.demo_recruiter_email and title.strip().startswith(DEMO_TITLE_PREFIXES):
         email = settings.demo_recruiter_email
         return settings.demo_recruiter_name or name_from_email(email), email
     return SYNTHETIC_RECRUITERS.get(department, FALLBACK_RECRUITER)
