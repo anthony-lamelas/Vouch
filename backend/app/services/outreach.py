@@ -69,9 +69,9 @@ def article(noun: str) -> str:
 
 def _shared_sentence(ctx: OutreachContext) -> str:
     if ctx.shared_company:
-        return f" You both worked at {ctx.shared_company}."
+        return f" You both worked at {ctx.shared_company}, so you seemed like the right person to ask."
     if ctx.shared_school:
-        return f" You both went to {ctx.shared_school}."
+        return f" You both went to {ctx.shared_school}, so you seemed like the right person to ask."
     return ""
 
 
