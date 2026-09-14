@@ -127,6 +127,31 @@ def test_multi_company_filter_is_an_or(client: TestClient) -> None:
     assert both >= max(stripe, google) and both > 0
 
 
+def test_tier_lists_and_exclude_requested(client: TestClient, db: Session) -> None:
+    role = _first_role(client)
+    page = client.get(
+        f"/api/roles/{role['id']}/candidates", params={"school_tiers": [1], "limit": 30}
+    ).json()
+    tier1 = {s["name"] for s in client.get("/api/filters").json()["schools"] if s["tier"] == 1}
+    assert "NYU" in tier1
+    for item in page["items"][:5]:
+        detail = client.get(f"/api/contacts/{item['contact']['id']}").json()
+        assert any(e["school"] in tier1 for e in detail["education"])
+
+    open_ids = {
+        str(x)
+        for x in db.scalars(
+            select(ReferralRequest.contact_id).where(ReferralRequest.status != "closed")
+        )
+    }
+    everything = client.get(f"/api/roles/{role['id']}/candidates", params={"limit": 100}).json()
+    hidden = client.get(
+        f"/api/roles/{role['id']}/candidates", params={"limit": 100, "exclude_requested": True}
+    ).json()
+    assert hidden["total"] <= everything["total"]
+    assert not any(i["contact"]["id"] in open_ids for i in hidden["items"])
+
+
 def test_tier_filter_only_returns_tier_one_alumni(client: TestClient) -> None:
     role = _first_role(client)
     page = client.get(

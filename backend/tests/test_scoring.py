@@ -29,7 +29,7 @@ def test_strength_rewards_same_team_overlap() -> None:
     b = connection_strength(employee_experiences=emp, contact_experiences=con_other_team, **kwargs)
     c = connection_strength(employee_experiences=emp, contact_experiences=con_no_overlap, **kwargs)
     assert a.strength > b.strength > c.strength
-    assert a.breakdown["overlap_detail"].startswith("Worked together at Stripe")
+    assert a.breakdown["overlap_detail"].startswith("Overlapped at Stripe")
     assert "on Payments" in a.breakdown["overlap_detail"]
 
 
@@ -90,11 +90,11 @@ def test_casual_draft_reads_naturally() -> None:
         role_location="San Francisco",
         role_url="https://x",
         employee_first_name="Bob",
-        shared_history="Worked together at Stripe (2019-2024) on Payments",
+        shared_history="Overlapped at Stripe (2019-2024) on Payments",
         fit_reasons=["4 of 8 required skills"],
     )
     text = draft_casual(ctx)
     assert text.startswith(
-        "Hey Priya! Feels like ages since we worked together at Stripe (2019-2024)"
+        "Hey Priya! Feels like ages since we overlapped at Stripe (2019-2024)"
     )
     assert "Software Engineer, Infrastructure" in text

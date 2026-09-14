@@ -95,7 +95,7 @@ SCHOOL_TIERS: Final[dict[str, int]] = {
     "University of Pennsylvania": 2,
     "Brown University": 2,
     "Duke University": 2,
-    "NYU": 2,
+    "NYU": 1,
     "USC": 2,
     "UC San Diego": 2,
     "Purdue University": 2,

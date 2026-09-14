@@ -47,9 +47,9 @@ def _because(ctx: OutreachContext) -> str:
 
 
 _HISTORY_REWRITES = (
+    ("Overlapped at", "we overlapped at"),
     ("Worked together at", "we worked together at"),
     ("Both worked at", "we both worked at"),
-    ("Overlapped at", "we overlapped at"),
     ("Both attended", "we both went to"),
 )
 
