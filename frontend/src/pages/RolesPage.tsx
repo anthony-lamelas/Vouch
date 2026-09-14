@@ -1,34 +1,37 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useRoles, useStats } from '../api/queries';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useRequests, useRoles } from '../api/queries';
 import type { RoleSummary } from '../api/types';
-import { EmptyState, ErrorState, Skeleton, TableSkeleton } from '../components/EmptyState';
+import { Button } from '../components/Button';
+import { EmptyState, ErrorState, TableSkeleton } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
 import { Segmented } from '../components/Segmented';
-import { formatCount, plural } from '../lib/format';
+import { plural } from '../lib/format';
+import { computeNeedsYou } from '../lib/needsYou';
 
-function StatsStrip() {
-  const stats = useStats();
-  if (stats.isPending) return <Skeleton className="h-5 w-[420px]" />;
-  if (stats.isError || !stats.data) return null;
-  const s = stats.data;
-  const items: [string, number][] = [
-    ['contacts', s.contacts],
-    ['employees', s.employees],
-    ['connections', s.connections],
-    ['open requests', s.requests_active],
-    ['roles', s.roles],
-  ];
+function NeedsYou() {
+  const mine = useRequests({ mine: true, active_only: true });
+  const items = useMemo(() => computeNeedsYou(mine.data?.items ?? []), [mine.data]);
+  if (items.length === 0) return null;
   return (
-    <dl className="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-[12.5px] text-muted tnum">
-      {items.map(([label, value]) => (
-        <div key={label} className="flex items-baseline gap-1.5">
-          <dt className="sr-only">{label}</dt>
-          <dd className="m-0 font-semibold text-ink text-[14px]">{formatCount(value)}</dd>
-          <span aria-hidden>{label}</span>
-        </div>
-      ))}
-    </dl>
+    <section
+      aria-labelledby="needs-you"
+      className="mb-6 border-l-2 border-ochre bg-ochre-soft px-4 py-3"
+    >
+      <h2 id="needs-you" className="text-[14px] font-semibold text-ochre">
+        Needs you
+      </h2>
+      <ul className="mt-1 space-y-0.5 text-[14px] text-ink">
+        {items.map((item) => (
+          <li key={item.key}>
+            {item.lead}{' '}
+            <Link to={item.to} className="link">
+              {item.action}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -68,10 +71,12 @@ export function RolesPage() {
   }, [roles.data, q, scope]);
 
   const groups = useMemo(() => groupByDepartment(filtered), [filtered]);
+  const open = (id: string) => navigate(`/roles/${id}`);
 
   return (
     <div>
-      <PageHeader title="Open roles" subtitle={<StatsStrip />}>
+      <NeedsYou />
+      <PageHeader title="Roles">
         <Segmented
           label="Role scope"
           value={scope}
@@ -88,9 +93,9 @@ export function RolesPage() {
           type="search"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search roles, teams, locations"
+          placeholder="Search roles"
           aria-label="Search roles"
-          className="field w-[300px]"
+          className="field w-[260px]"
         />
       </PageHeader>
 
@@ -102,45 +107,40 @@ export function RolesPage() {
             q
               ? `No roles match “${q}”`
               : scope === 'mine'
-                ? 'No roles assigned to you'
+                ? 'No roles are assigned to you.'
                 : 'No open roles'
           }
+          action={
+            q ? (
+              <Button onClick={() => setQ('')}>Clear the search</Button>
+            ) : scope === 'mine' ? (
+              <Button onClick={() => setScope('all')}>Show all roles</Button>
+            ) : undefined
+          }
         >
-          {q ? (
-            'Try a different word, or clear the search.'
-          ) : scope === 'mine' ? (
-            <button type="button" className="link" onClick={() => setScope('all')}>
-              Show all roles
-            </button>
-          ) : (
-            'Roles sync from the Ashby job board.'
-          )}
+          {q ? 'Try a different word.' : scope === 'mine' ? null : 'Roles sync from Ashby.'}
         </EmptyState>
       ) : null}
 
       {groups.length > 0 ? (
-        <div className="rounded-md border border-line bg-surface overflow-hidden">
+        <div className="border-y border-line bg-surface">
           <table className="data-table">
             <thead>
               <tr>
-                <th className="w-[38%]">Role</th>
+                <th className="w-[36%]">Role</th>
                 <th>Team</th>
                 <th>Location</th>
                 <th>Owner</th>
                 <th className="num">Strong matches</th>
-                <th className="num">Active requests</th>
+                <th className="num">Open requests</th>
               </tr>
             </thead>
             {groups.map(([dept, list]) => (
-              <tbody key={dept}>
+              <tbody key={dept} aria-label={dept}>
                 <tr>
-                  <th
-                    colSpan={6}
-                    scope="rowgroup"
-                    className="sticky top-[33px] z-[1] bg-ground text-left px-3 py-2.5 text-[15px] font-semibold text-ink border-b border-line"
-                  >
+                  <th colSpan={6} scope="rowgroup" className="group">
                     {dept}
-                    <span className="ml-2 text-[13px] font-normal text-muted tnum">
+                    <span className="ml-2 text-[14px] font-normal text-muted tnum">
                       {list.length}
                     </span>
                   </th>
@@ -150,45 +150,39 @@ export function RolesPage() {
                     key={r.id}
                     tabIndex={0}
                     className="is-clickable"
-                    onClick={() => navigate(`/roles/${r.id}`)}
+                    onClick={() => open(r.id)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        navigate(`/roles/${r.id}`);
+                        open(r.id);
                       }
                     }}
                   >
                     <td>
-                      <span className="font-medium text-ink">{r.title}</span>
+                      <span className="name">{r.title}</span>
                     </td>
                     <td className="text-ink-2">{r.team}</td>
                     <td className="text-ink-2">
                       {r.location}
-                      {r.is_remote ? (
-                        <span className="ml-1.5 text-muted text-[12px]">Remote</span>
-                      ) : null}
+                      {r.is_remote ? <span className="ml-1.5 text-muted">Remote</span> : null}
                     </td>
                     <td className="text-ink-2">
-                      {r.is_mine ? (
-                        <span className="font-medium text-ink">You</span>
-                      ) : (
-                        (r.owner_name ?? <span className="text-faint">Unassigned</span>)
-                      )}
+                      {r.is_mine ? 'you' : (r.owner_name ?? <span className="text-muted">—</span>)}
                     </td>
-                    <td className="num tnum">
+                    <td className="num tnum text-ink-2">
                       {r.strong_match_count > 0 ? (
                         plural(r.strong_match_count, 'strong match', 'strong matches')
                       ) : (
-                        <span className="text-faint">none yet</span>
+                        <span className="text-muted">none yet</span>
                       )}
                     </td>
                     <td className="num tnum">
                       {r.active_request_count > 0 ? (
-                        <span className="font-medium text-accent-ink">
+                        <span className="font-medium text-spruce-ink">
                           {r.active_request_count}
                         </span>
                       ) : (
-                        <span className="text-faint">0</span>
+                        <span className="text-muted">0</span>
                       )}
                     </td>
                   </tr>

@@ -220,6 +220,22 @@ export interface CreateRequestIn {
   contact_id: string;
   role_id: string;
   employee_id?: string | null;
+  /** Recruiter-edited version of the suggested message; the server falls back to its draft. */
+  message?: string | null;
+}
+
+export interface AskPreviewIn {
+  contact_id: string;
+  role_id: string;
+  employee_id?: string | null;
+}
+
+export interface AskPreviewOut {
+  employee: EmployeeBrief;
+  connection: ConnectionOut;
+  casual: string;
+  formal: string;
+  reasons: Reason[];
 }
 
 export interface TransitionIn {

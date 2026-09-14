@@ -6,14 +6,18 @@ export interface Option {
   tier?: number;
 }
 
-/** Hand-rolled multi-select: a button that opens a searchable checkbox list. */
+/**
+ * An add-button ("+ Company") that opens a searchable checkbox list. Applied values are shown
+ * elsewhere as removable chips, so the trigger itself stays quiet.
+ */
 export function MultiSelect({
   label,
   options,
   selected,
   onChange,
-  placeholder = 'Search…',
+  placeholder = 'Search',
 }: {
+  /** Singular noun, e.g. "Company". */
   label: string;
   options: Option[];
   selected: string[];
@@ -58,7 +62,7 @@ export function MultiSelect({
     onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]);
   };
 
-  const active = selected.length > 0;
+  const lower = label.toLowerCase();
   return (
     <div ref={rootRef} className="relative">
       <button
@@ -66,31 +70,29 @@ export function MultiSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}
+        aria-label={`Add ${lower} filter`}
         onClick={() => setOpen((v) => !v)}
-        className={`field inline-flex items-center gap-1.5 pr-2 text-[13px] ${
-          active ? 'border-accent text-accent-ink bg-accent-soft/60' : 'text-ink-2'
+        className={`inline-flex h-8 items-center gap-1 rounded-control border px-2.5 text-[14px] transition-colors ${
+          open
+            ? 'border-spruce text-spruce-ink'
+            : 'border-line-strong text-ink-2 hover:border-ink-2 hover:text-ink'
         }`}
       >
-        <span>{label}</span>
-        {active ? (
-          <span className="rounded-sm bg-accent px-1 text-[11px] font-semibold text-white tnum">
-            {selected.length}
-          </span>
-        ) : null}
-        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden className="ml-0.5">
-          <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
+          <path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.5" />
         </svg>
+        {label}
       </button>
       {open ? (
-        <div className="absolute left-0 top-[calc(100%+4px)] z-30 w-[280px] rounded bg-surface shadow-pop">
-          <div className="p-2 border-b border-line">
+        <div className="absolute left-0 top-[calc(100%+4px)] z-30 w-[280px] rounded-control border border-line-strong bg-surface">
+          <div className="border-b border-line p-2">
             <input
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={placeholder}
-              className="field w-full h-7 text-[12.5px]"
-              aria-label={`Search ${label.toLowerCase()}`}
+              className="field h-7 w-full text-[13.5px]"
+              aria-label={`Search ${lower}`}
             />
           </div>
           <ul
@@ -100,18 +102,18 @@ export function MultiSelect({
             className="max-h-[280px] overflow-auto py-1"
           >
             {visible.length === 0 ? (
-              <li className="px-3 py-2 text-muted text-[12.5px]">No matches</li>
+              <li className="px-3 py-2 text-[13.5px] text-muted">No matches</li>
             ) : (
               visible.map((o) => {
                 const checked = selected.includes(o.value);
                 return (
                   <li key={o.value} role="option" aria-selected={checked}>
-                    <label className="flex items-center gap-2 px-3 py-1.5 hover:bg-ground cursor-pointer text-[12.5px]">
+                    <label className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[13.5px] hover:bg-canvas">
                       <input
                         type="checkbox"
                         checked={checked}
                         onChange={() => toggle(o.value)}
-                        className="accent-accent"
+                        className="accent-spruce"
                       />
                       <span className="flex-1 truncate">{o.value}</span>
                       {o.tier !== undefined ? <TierBadge tier={o.tier} /> : null}
@@ -121,17 +123,6 @@ export function MultiSelect({
               })
             )}
           </ul>
-          {active ? (
-            <div className="border-t border-line p-1.5 flex justify-end">
-              <button
-                type="button"
-                onClick={() => onChange([])}
-                className="text-[12px] text-muted hover:text-ink px-2 py-1 rounded"
-              >
-                Clear {label.toLowerCase()}
-              </button>
-            </div>
-          ) : null}
         </div>
       ) : null}
     </div>

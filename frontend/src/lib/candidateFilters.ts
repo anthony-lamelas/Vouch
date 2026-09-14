@@ -1,6 +1,6 @@
 /**
  * Candidate filter state lives in the URL so links are shareable. This module is the single
- * place that knows how to read it, write it, and change it.
+ * place that knows how to read it, write it, change it, and describe it as removable chips.
  */
 
 export interface CandidateFilters {
@@ -9,10 +9,11 @@ export interface CandidateFilters {
   skills: string[];
   companyTier: number | null;
   q: string;
-  minScore: number;
   limit: number;
   offset: number;
 }
+
+export type ListField = 'companies' | 'schools' | 'skills';
 
 export const DEFAULT_LIMIT = 25;
 
@@ -22,7 +23,6 @@ export const EMPTY_FILTERS: CandidateFilters = {
   skills: [],
   companyTier: null,
   q: '',
-  minScore: 0,
   limit: DEFAULT_LIMIT,
   offset: 0,
 };
@@ -43,7 +43,6 @@ export function parseFilters(params: URLSearchParams): CandidateFilters {
     skills: params.getAll('skills').filter(Boolean),
     companyTier: Number.isInteger(tierNum) && tierNum >= 1 && tierNum <= 3 ? tierNum : null,
     q: params.get('q') ?? '',
-    minScore: num(params.get('min_score'), 0, 0, 1),
     limit: Math.round(num(params.get('limit'), DEFAULT_LIMIT, 1, 100)),
     offset: Math.round(num(params.get('offset'), 0, 0, Number.MAX_SAFE_INTEGER)),
   };
@@ -60,7 +59,6 @@ export function serializeFilters(
   for (const s of filters.skills) params.append('skills', s);
   if (filters.companyTier !== null) params.set('company_tier', String(filters.companyTier));
   if (filters.q) params.set('q', filters.q);
-  if (filters.minScore > 0) params.set('min_score', String(filters.minScore));
   if (filters.limit !== DEFAULT_LIMIT) params.set('limit', String(filters.limit));
   if (filters.offset > 0) params.set('offset', String(filters.offset));
   if (extra) {
@@ -71,10 +69,9 @@ export function serializeFilters(
 
 export type FilterAction =
   | { type: 'setQuery'; q: string }
-  | { type: 'toggle'; field: 'companies' | 'schools' | 'skills'; value: string }
-  | { type: 'setList'; field: 'companies' | 'schools' | 'skills'; values: string[] }
+  | { type: 'toggle'; field: ListField; value: string }
+  | { type: 'setList'; field: ListField; values: string[] }
   | { type: 'setTier'; tier: number | null }
-  | { type: 'setMinScore'; minScore: number }
   | { type: 'setPage'; offset: number }
   | { type: 'clear' };
 
@@ -94,8 +91,6 @@ export function filtersReducer(state: CandidateFilters, action: FilterAction): C
       return { ...state, [action.field]: action.values, offset: 0 };
     case 'setTier':
       return { ...state, companyTier: action.tier, offset: 0 };
-    case 'setMinScore':
-      return { ...state, minScore: action.minScore, offset: 0 };
     case 'setPage':
       return { ...state, offset: Math.max(0, action.offset) };
     case 'clear':
@@ -103,13 +98,39 @@ export function filtersReducer(state: CandidateFilters, action: FilterAction): C
   }
 }
 
+export interface AppliedFilterChip {
+  key: string;
+  label: string;
+  /** Dispatching this removes exactly this chip and nothing else. */
+  remove: FilterAction;
+}
+
+/**
+ * The applied filters as removable chips, in a stable order: companies, schools, skills, tier.
+ * The search text is not a chip; it lives in the search box.
+ */
+export function appliedFilterChips(f: CandidateFilters): AppliedFilterChip[] {
+  const chips: AppliedFilterChip[] = [];
+  const lists: ListField[] = ['companies', 'schools', 'skills'];
+  for (const field of lists) {
+    for (const value of f[field]) {
+      chips.push({
+        key: `${field}:${value}`,
+        label: value,
+        remove: { type: 'toggle', field, value },
+      });
+    }
+  }
+  if (f.companyTier !== null) {
+    chips.push({
+      key: 'tier',
+      label: `Tier ${f.companyTier}`,
+      remove: { type: 'setTier', tier: null },
+    });
+  }
+  return chips;
+}
+
 export function activeFilterCount(f: CandidateFilters): number {
-  return (
-    f.companies.length +
-    f.schools.length +
-    f.skills.length +
-    (f.companyTier !== null ? 1 : 0) +
-    (f.q ? 1 : 0) +
-    (f.minScore > 0 ? 1 : 0)
-  );
+  return appliedFilterChips(f).length + (f.q ? 1 : 0);
 }

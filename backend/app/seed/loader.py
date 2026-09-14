@@ -186,6 +186,7 @@ _SCENARIOS: tuple[tuple[str, list[tuple[Status, int, str | None]]], ...] = (
             (Status.REQUESTED, 12, None),
             (Status.EMPLOYEE_ACCEPTED, 11, None),
             (Status.CANDIDATE_DECLINED, 6, "Happy where she is; revisit in six months"),
+            (Status.CLOSED, 6, "Closed automatically: candidate passed"),
         ],
     ),
     (
@@ -295,7 +296,11 @@ def seed_demo_requests(db: Session) -> int:
             elif status == Status.REQUESTED:
                 actor, note = role.owner_email or RECRUITER, f"Asked {employee.full_name}"
             elif status == Status.CLOSED:
-                actor = role.owner_email or RECRUITER
+                actor = (
+                    "system"
+                    if (note or "").startswith("Closed automatically")
+                    else (role.owner_email or RECRUITER)
+                )
                 req.closed_outcome = note
             else:
                 actor = employee_actor(employee)

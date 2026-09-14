@@ -1,10 +1,11 @@
 export function Wordmark({ size = 'sm' }: { size?: 'sm' | 'lg' }) {
-  const cls = size === 'lg' ? 'text-[34px] leading-none' : 'text-[19px] leading-none';
+  const cls = size === 'lg' ? 'text-[30px]' : 'text-[18px]';
   return (
-    <span className={`wordmark ${cls} text-ink select-none`} aria-label="VOUCH">
-      <span>V</span>
-      <span className="text-accent">O</span>
-      <span>UCH</span>
+    <span
+      className={`font-serif italic font-normal leading-none tracking-[0.01em] text-ink select-none ${cls}`}
+      aria-label="VOUCH"
+    >
+      VOUCH
     </span>
   );
 }

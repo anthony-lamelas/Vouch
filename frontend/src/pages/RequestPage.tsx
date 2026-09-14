@@ -1,18 +1,15 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { useNudgeRequest, useRequest, useTransitionRequest } from '../api/queries';
-import type { RequestDetail, Status } from '../api/types';
+import type { EventOut, RequestDetail, Status } from '../api/types';
 import { Button } from '../components/Button';
-import { Chip } from '../components/Chip';
 import { CopyButton } from '../components/CopyButton';
-import { KV } from '../components/DefinitionList';
 import { DeliveryMark } from '../components/DeliveryMark';
 import { Disclosure } from '../components/Disclosure';
 import { ErrorState, Skeleton } from '../components/EmptyState';
-import { PageHeader, SectionTitle } from '../components/PageHeader';
-import { StatusPill } from '../components/StatusPill';
-import { formatDate, formatDateTime, formatPercent, formatRelative } from '../lib/format';
+import { StrengthBar } from '../components/StrengthBar';
+import { firstName, formatDate, formatDateTime, formatRelative } from '../lib/format';
 import { STATUS_LABELS, eventSentence } from '../lib/status';
 
 export function RequestPage() {
@@ -22,22 +19,21 @@ export function RequestPage() {
   if (request.isPending) {
     return (
       <div className="space-y-3">
-        <Skeleton className="h-3 w-40" />
-        <Skeleton className="h-7 w-[460px]" />
-        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-8 w-[460px]" />
+        <Skeleton className="h-4 w-[320px]" />
+        <Skeleton className="mt-6 h-16 w-full" />
       </div>
     );
   }
   if (request.isError) {
     return <ErrorState title="Couldn't load this request" error={request.error} />;
   }
-  const r = request.data;
-  return <RequestView r={r} />;
+  return <RequestView r={request.data} />;
 }
 
 function RequestView({ r }: { r: RequestDetail }) {
-  const contactFirst = r.contact.full_name.split(' ')[0] ?? r.contact.full_name;
-  const nudge = useNudgeRequest(r.id);
+  const contactFirst = firstName(r.contact.full_name);
+  const employeeFirst = firstName(r.employee.full_name);
   const events = useMemo(
     () =>
       [...r.events].sort(
@@ -45,282 +41,386 @@ function RequestView({ r }: { r: RequestDetail }) {
       ),
     [r.events],
   );
-  const canClose = r.allowed_transitions.includes('closed');
-  const manual = r.allowed_transitions.filter((s) => s !== 'closed');
 
   return (
     <div>
-      <PageHeader
-        crumbs={
-          <>
-            <Link to="/pipeline" className="hover:text-ink">
-              Pipeline
-            </Link>
-            <span className="mx-1.5 text-line-2">/</span>
-            <span>Request</span>
-          </>
-        }
-        title={
-          <span>
+      <header className="mb-5">
+        <h1 className="font-serif text-[28px] font-medium leading-[1.15] tracking-[-0.01em] text-ink">
+          <Link to={`/roles/${r.role.id}?contact=${r.contact.id}`} className="hover:underline">
             {r.contact.full_name}
-            <span className="text-muted font-medium"> for </span>
+          </Link>
+          <span className="font-normal italic text-ink-2"> for </span>
+          <Link to={`/roles/${r.role.id}`} className="font-normal italic hover:underline">
             {r.role.title}
+          </Link>
+        </h1>
+        <p className="mt-1.5 text-[14px] text-ink-2">
+          Asked {r.employee.full_name} · requested by {r.requested_by_name} ·{' '}
+          <span className="tnum" title={r.created_at}>
+            {formatDate(r.created_at)}
           </span>
-        }
-        subtitle={
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <StatusPill status={r.status} />
-            {r.stale ? (
-              <span className="inline-flex flex-wrap items-center gap-2 text-[12.5px] font-medium text-amber-700">
-                No reply from {contactFirst} in {r.days_waiting} days.
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() => nudge.mutate()}
-                  disabled={nudge.isPending}
+        </p>
+      </header>
+
+      <Stepper r={r} events={events} contactFirst={contactFirst} employeeFirst={employeeFirst} />
+
+      <ActionRow r={r} contactFirst={contactFirst} employeeFirst={employeeFirst} />
+
+      <div className="mt-8 grid grid-cols-1 items-start gap-x-10 gap-y-8 lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
+        <section aria-labelledby="timeline-title" className="min-w-0">
+          <h2 id="timeline-title" className="mb-1 text-[14px] font-semibold text-ink">
+            Timeline
+          </h2>
+          <ol>
+            {events.map((e, i) => {
+              const latest = i === events.length - 1;
+              return (
+                <li
+                  key={e.id}
+                  className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-6 border-b border-line py-3 ${
+                    latest ? 'border-l-2 border-l-spruce pl-3' : 'pl-[14px]'
+                  }`}
                 >
-                  {nudge.isPending ? 'Sending…' : `Nudge ${r.employee.full_name.split(' ')[0]}`}
-                </Button>
-                {nudge.isError ? <span className="text-red-700">Nudge failed.</span> : null}
-              </span>
-            ) : null}
-            <span className="text-[12.5px]">
-              Requested by {r.requested_by_name} · {formatDate(r.created_at)} · last activity{' '}
-              {formatRelative(r.last_event_at ?? r.updated_at)}
-            </span>
-          </div>
-        }
-      />
-
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-5 items-start">
-        <div className="space-y-5 min-w-0">
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
-            <Panel title="Candidate">
-              <dl>
-                <KV label="Name">
-                  <Link to={`/roles/${r.role.id}?contact=${r.contact.id}`} className="link">
-                    {r.contact.full_name}
-                  </Link>
-                </KV>
-                <KV label="Now">{r.contact.headline}</KV>
-                <KV label="Location">{r.contact.location}</KV>
-                <KV label="Skills">
-                  <div className="flex flex-wrap gap-1">
-                    {r.contact.skills.map((s) => (
-                      <Chip key={s}>{s}</Chip>
-                    ))}
-                  </div>
-                </KV>
-              </dl>
-            </Panel>
-            <Panel title="Role">
-              <dl>
-                <KV label="Title">
-                  <Link to={`/roles/${r.role.id}`} className="link">
-                    {r.role.title}
-                  </Link>
-                </KV>
-                <KV label="Team">{r.role.team}</KV>
-                <KV label="Department">{r.role.department}</KV>
-                <KV label="Location">{r.role.location}</KV>
-              </dl>
-            </Panel>
-            <Panel title="Employee asked">
-              <dl>
-                <KV label="Name">{r.employee.full_name}</KV>
-                <KV label="Title">{r.employee.title}</KV>
-                <KV label="Team">{r.employee.team ?? '—'}</KV>
-                {r.connection ? (
-                  <KV label="Strength">
-                    <span className="tnum">{formatPercent(r.connection.strength)}</span>
-                    {r.connection.shared_history ? (
-                      <span className="block text-[12.5px] text-muted">
-                        {r.connection.shared_history}
-                      </span>
+                  <div className="min-w-0 text-[14px] text-ink">
+                    <span className="font-medium">{e.actor_label}</span>{' '}
+                    {eventSentence(e.from_status, e.to_status, contactFirst)}
+                    {e.note ? (
+                      <blockquote className="mt-1 border-l-2 border-line-strong pl-2.5 text-[13.5px] text-ink-2">
+                        “{e.note}”
+                      </blockquote>
                     ) : null}
-                  </KV>
-                ) : null}
-              </dl>
-            </Panel>
-          </div>
+                  </div>
+                  <time
+                    dateTime={e.created_at}
+                    title={e.created_at}
+                    className="whitespace-nowrap text-right text-[13px] text-muted tnum"
+                  >
+                    {formatDateTime(e.created_at)}
+                  </time>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
 
-          <Panel title="Why this candidate">
+        <aside className="space-y-6 text-[14px]">
+          <section>
+            <h3 className="mb-1 text-[13px] font-medium text-muted">Candidate</h3>
+            <Link
+              to={`/roles/${r.role.id}?contact=${r.contact.id}`}
+              className="name hover:underline"
+            >
+              {r.contact.full_name}
+            </Link>
+            <div className="mt-0.5 text-ink-2">
+              {r.contact.current_title} at {r.contact.current_company}
+            </div>
+            <div className="text-muted">{r.contact.location}</div>
+          </section>
+
+          <section>
+            <h3 className="mb-1 text-[13px] font-medium text-muted">Employee</h3>
+            <div className="font-medium text-ink">{r.employee.full_name}</div>
+            <div className="text-ink-2">
+              {r.employee.title}
+              {r.employee.team ? `, ${r.employee.team}` : ''}
+            </div>
+            {r.connection ? (
+              <div className="mt-1 flex items-center gap-2 text-[13px] text-muted">
+                <StrengthBar value={r.connection.strength} />
+                {r.connection.shared_history ? <span>{r.connection.shared_history}</span> : null}
+              </div>
+            ) : null}
+          </section>
+
+          <Disclosure summary="Why this candidate">
             {r.reasons.length === 0 ? (
               <p className="text-muted">No stored match signals for this pair.</p>
             ) : (
-              <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+              <ul className="space-y-1">
                 {r.reasons.map((reason, i) => (
-                  <li key={i} className="flex items-baseline gap-2 text-[13px]">
-                    <span className="font-medium text-ink whitespace-nowrap">{reason.label}</span>
+                  <li key={i} className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="text-ink">{reason.label}</span>
                     {reason.detail ? (
-                      <span className="text-muted truncate" title={reason.detail}>
-                        {reason.detail}
-                      </span>
+                      <span className="text-[13px] text-muted">{reason.detail}</span>
                     ) : null}
                   </li>
                 ))}
               </ul>
             )}
-            {r.connection ? (
-              <div className="mt-3 pt-3 border-t border-line">
-                <p className="text-[12.5px] text-muted mb-1">Why {r.employee.full_name}</p>
-                <Breakdown connection={r.connection} />
-              </div>
-            ) : null}
-          </Panel>
+          </Disclosure>
 
-          <Panel title="Drafts sent to the employee">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Draft label="Casual DM" text={r.outreach_casual} />
-              <Draft label="Email" text={r.outreach_formal} />
+          <Disclosure summary={`What ${employeeFirst} received`}>
+            <div className="space-y-4">
+              {r.messages.length === 0 ? (
+                <div>
+                  <p className="mb-1 text-[13px] text-muted">Draft, not yet sent</p>
+                  <MessageBody text={r.outreach_casual} />
+                </div>
+              ) : (
+                r.messages.map((m) => (
+                  <div key={m.id}>
+                    <MessageBody text={m.body} />
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <DeliveryMark delivered={m.delivered} error={m.error} channel={m.channel} />
+                      <time
+                        dateTime={m.created_at}
+                        title={m.created_at}
+                        className="text-[13px] text-muted tnum"
+                      >
+                        {formatDateTime(m.created_at)}
+                      </time>
+                    </div>
+                  </div>
+                ))
+              )}
+              <Disclosure summary="Email version">
+                <MessageBody text={r.outreach_formal} />
+                <div className="mt-2">
+                  <CopyButton text={r.outreach_formal} label="Copy email" />
+                </div>
+              </Disclosure>
             </div>
-          </Panel>
-
-          <Panel title="Messages">
-            {r.messages.length === 0 ? (
-              <p className="text-muted">No message has been sent for this request.</p>
-            ) : (
-              <ul className="divide-y divide-line">
-                {r.messages.map((m) => (
-                  <li key={m.id} className="py-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                    <span className="text-ink">
-                      {m.channel === 'slack' ? 'Slack DM' : m.channel} to{' '}
-                      <span className="font-medium">{m.employee.full_name}</span>
-                      <span className="text-muted text-[12px]"> ({m.recipient})</span>
-                    </span>
-                    <DeliveryMark delivered={m.delivered} error={m.error} channel={m.channel} />
-                    <span className="ml-auto text-[12.5px] text-muted tnum">
-                      {formatDateTime(m.created_at)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
-        </div>
-
-        <div className="space-y-5">
-          <Panel title="Actions">
-            <Actions r={r} canClose={canClose} manual={manual} />
-          </Panel>
-          <Panel title="Timeline">
-            <ol className="relative border-l border-line-2 ml-1.5 pl-4 space-y-3">
-              {events.map((e, i) => (
-                <li key={e.id} className="relative">
-                  <span
-                    aria-hidden
-                    className={`absolute -left-[21.5px] top-1.5 size-2 rounded-full border-2 border-surface ${
-                      i === events.length - 1 ? 'bg-accent' : 'bg-line-2'
-                    }`}
-                  />
-                  <div className="text-[13px] text-ink">
-                    <span className="font-medium">{e.actor_label}</span>{' '}
-                    <span className="text-muted">
-                      {eventSentence(e.from_status, e.to_status, contactFirst)}
-                    </span>{' '}
-                    <span className="text-faint">· {STATUS_LABELS[e.to_status]}</span>
-                  </div>
-                  {e.note ? (
-                    <div className="text-[12.5px] text-ink-2 mt-0.5">“{e.note}”</div>
-                  ) : null}
-                  <div className="text-[11.5px] text-faint tnum" title={e.created_at}>
-                    {formatDateTime(e.created_at)} · {formatRelative(e.created_at)}
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </Panel>
-        </div>
+          </Disclosure>
+        </aside>
       </div>
     </div>
   );
 }
 
-function Panel({ title, children }: { title: string; children: ReactNode }) {
+function MessageBody({ text }: { text: string }) {
   return (
-    <section className="rounded-md border border-line bg-surface px-4 py-3">
-      <SectionTitle>{title}</SectionTitle>
-      {children}
-    </section>
+    <pre className="m-0 whitespace-pre-wrap border-l-2 border-line-strong pl-3 font-sans text-[13.5px] leading-relaxed text-ink-2">
+      {text}
+    </pre>
   );
 }
 
-function Draft({ label, text }: { label: string; text: string }) {
-  return (
-    <div className="min-w-0">
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[12.5px] font-medium text-ink-2">{label}</span>
-        <CopyButton text={text} />
-      </div>
-      <pre className="m-0 whitespace-pre-wrap font-sans text-[12.5px] leading-relaxed text-ink-2 rounded bg-ground border border-line px-3 py-2 max-h-[260px] overflow-auto">
-        {text}
-      </pre>
-    </div>
-  );
+interface Step {
+  label: string;
+  state: 'done' | 'current' | 'future';
+  when: string | null;
+  note?: string;
 }
 
-function Breakdown({ connection }: { connection: NonNullable<RequestDetail['connection']> }) {
-  const b = connection.breakdown;
-  const rows: [string, number | undefined, string | null | undefined][] = [
-    ['Worked together', b.overlap, b.overlap_detail],
-    ['School', b.school, b.school_detail],
-    ['Recency', b.recency, b.connected_on ? `Connected ${formatDate(b.connected_on)}` : null],
-  ];
-  return (
-    <dl className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[12px]">
-      {rows.map(([label, value, detail]) => (
-        <div key={label} className="rounded bg-ground px-2.5 py-1.5">
-          <dt className="flex justify-between text-muted">
-            <span>{label}</span>
-            <span className="tnum text-ink-2">
-              {value === undefined ? '—' : formatPercent(value)}
-            </span>
-          </dt>
-          <dd className="m-0 text-ink-2 truncate" title={detail ?? undefined}>
-            {detail ?? '—'}
-          </dd>
-        </div>
-      ))}
-    </dl>
-  );
+function firstEventTo(events: EventOut[], statuses: Status[]): EventOut | undefined {
+  return events.find((e) => statuses.includes(e.to_status));
 }
 
-function Actions({
+function buildSteps(
+  r: RequestDetail,
+  events: EventOut[],
+  contactFirst: string,
+  employeeFirst: string,
+): Step[] {
+  const asked = firstEventTo(events, ['requested']);
+  const reached = firstEventTo(events, ['employee_accepted']);
+  const answered = firstEventTo(events, ['candidate_interested', 'candidate_declined']);
+  const closed = firstEventTo(events, ['closed']);
+
+  const stage: number =
+    r.status === 'closed'
+      ? 4
+      : r.status === 'candidate_interested' || r.status === 'candidate_declined'
+        ? 2
+        : r.status === 'employee_accepted'
+          ? 1
+          : 0;
+
+  const labels = [
+    'Asked',
+    `${employeeFirst} reached out`,
+    `${contactFirst} answered`,
+    'Closed',
+  ] as const;
+  const whens = [asked, reached, answered, closed].map((e) => e?.created_at ?? null);
+
+  return labels.map((label, i) => {
+    let state: Step['state'] = i < stage ? 'done' : i === stage ? 'current' : 'future';
+    if (stage === 4) state = 'done';
+    const step: Step = { label, state, when: whens[i] ?? null };
+    if (i === 0 && r.status === 'employee_declined') {
+      step.state = 'done';
+      step.note = `${employeeFirst} passed`;
+    }
+    if (i === 2 && r.status === 'candidate_declined') step.note = `${contactFirst} passed`;
+    if (i === 2 && r.status === 'candidate_interested') step.note = `${contactFirst} is interested`;
+    return step;
+  });
+}
+
+function Stepper({
   r,
-  canClose,
-  manual,
+  events,
+  contactFirst,
+  employeeFirst,
 }: {
   r: RequestDetail;
-  canClose: boolean;
-  manual: Status[];
+  events: EventOut[];
+  contactFirst: string;
+  employeeFirst: string;
 }) {
+  const steps = buildSteps(r, events, contactFirst, employeeFirst);
+  const rule: Record<Step['state'], string> = {
+    done: 'border-ink',
+    current: 'border-spruce',
+    future: 'border-line-strong',
+  };
+  const text: Record<Step['state'], string> = {
+    done: 'text-ink',
+    current: 'text-spruce font-medium',
+    future: 'text-muted',
+  };
+  return (
+    <ol className="grid grid-cols-4 gap-3" aria-label="Progress">
+      {steps.map((s) => (
+        <li
+          key={s.label}
+          aria-current={s.state === 'current' ? 'step' : undefined}
+          className={`border-t-2 pt-2 ${rule[s.state]}`}
+        >
+          <div className={`text-[14px] ${text[s.state]}`}>{s.label}</div>
+          {s.note ? (
+            <div
+              className={`text-[13px] ${s.note.endsWith('passed') ? 'text-neg' : 'text-spruce-ink'}`}
+            >
+              {s.note}
+            </div>
+          ) : null}
+          {s.when ? (
+            <div className="text-[13px] text-muted tnum" title={s.when}>
+              {formatDate(s.when)}
+            </div>
+          ) : null}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function ActionRow({
+  r,
+  contactFirst,
+  employeeFirst,
+}: {
+  r: RequestDetail;
+  contactFirst: string;
+  employeeFirst: string;
+}) {
+  const nudge = useNudgeRequest(r.id);
   const transition = useTransitionRequest(r.id);
+  const [closing, setClosing] = useState(false);
   const [outcome, setOutcome] = useState('');
-  const [manualStatus, setManualStatus] = useState<Status | ''>(manual[0] ?? '');
-  const [manualNote, setManualNote] = useState('');
   const [attemptedClose, setAttemptedClose] = useState(false);
+  const manual: Status[] = r.allowed_transitions.filter((s) => s !== 'closed');
+  const [manualStatus, setManualStatus] = useState<Status | ''>('');
+  const [manualNote, setManualNote] = useState('');
+  const canClose = r.allowed_transitions.includes('closed');
 
   const err = transition.error;
   const errorText = err instanceof ApiError ? err.detail : err ? err.message : null;
 
   if (r.status === 'closed') {
     return (
-      <div>
-        <p className="text-ink-2">This request is closed.</p>
+      <div className="mt-4 border-b border-line pb-4 text-[14px] text-ink-2">
+        Closed {formatRelative(r.last_event_at ?? r.updated_at)}
         {r.closed_outcome ? (
-          <p className="mt-1 text-[12.5px] text-muted">Outcome: “{r.closed_outcome}”</p>
-        ) : null}
+          <>
+            {' '}
+            with the outcome <span className="text-ink">“{r.closed_outcome}”</span>
+          </>
+        ) : (
+          '.'
+        )}
       </div>
     );
   }
 
-  const chosenManual = manual.includes(manualStatus as Status)
-    ? (manualStatus as Status)
-    : manual[0];
+  const chosenManual: Status | undefined =
+    manualStatus && manual.includes(manualStatus) ? manualStatus : manual[0];
 
   return (
-    <div className="space-y-4">
-      {canClose ? (
+    <div className="mt-4 border-b border-line pb-4">
+      <div className="flex flex-wrap items-center gap-3">
+        {r.stale ? (
+          <>
+            <p className="text-[14px] font-medium text-ochre">
+              No reply from {contactFirst} in {r.days_waiting ?? 0} days.
+            </p>
+            <Button variant="primary" onClick={() => nudge.mutate()} disabled={nudge.isPending}>
+              {nudge.isPending ? 'Sending' : `Nudge ${employeeFirst}`}
+            </Button>
+          </>
+        ) : null}
+        {canClose ? (
+          <Button
+            variant="secondary"
+            onClick={() => setClosing((v) => !v)}
+            aria-expanded={closing}
+            disabled={transition.isPending}
+          >
+            Close request
+          </Button>
+        ) : null}
+        {!r.stale && manual.length > 0 ? (
+          <Disclosure summary="More" className="ml-1">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!chosenManual) return;
+                transition.mutate({
+                  to_status: chosenManual,
+                  note: manualNote.trim() || null,
+                  reason: null,
+                });
+              }}
+              className="flex max-w-[560px] flex-wrap items-end gap-3"
+            >
+              <label className="block">
+                <span className="mb-1 block text-[13px] text-muted">
+                  Record what {employeeFirst} told you outside Slack
+                </span>
+                <select
+                  value={chosenManual ?? ''}
+                  onChange={(e) => setManualStatus(e.target.value as Status)}
+                  className="field pr-7 text-[14px]"
+                >
+                  {manual.map((s) => (
+                    <option key={s} value={s}>
+                      {STATUS_LABELS[s]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <input
+                value={manualNote}
+                onChange={(e) => setManualNote(e.target.value)}
+                placeholder="Note (optional)"
+                aria-label="Note"
+                className="field w-[240px] text-[14px]"
+                maxLength={2000}
+              />
+              <Button type="submit" disabled={transition.isPending || !chosenManual}>
+                {transition.isPending && transition.variables?.to_status !== 'closed'
+                  ? 'Saving'
+                  : 'Record update'}
+              </Button>
+            </form>
+          </Disclosure>
+        ) : null}
+        {nudge.isError ? (
+          <p role="alert" className="text-[13.5px] text-neg">
+            The nudge didn't send. Try again.
+          </p>
+        ) : null}
+        {nudge.isSuccess ? (
+          <p className="text-[13.5px] text-ink-2" aria-live="polite">
+            Nudged {employeeFirst}.
+          </p>
+        ) : null}
+      </div>
+
+      {closing ? (
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -328,93 +428,43 @@ function Actions({
             if (!outcome.trim()) return;
             transition.mutate({ to_status: 'closed', note: outcome.trim() });
           }}
-          className="space-y-2"
+          className="mt-3 max-w-[560px] space-y-2"
         >
           <label className="block">
-            <span className="block text-[12.5px] font-medium text-ink-2 mb-1">
-              Outcome note <span className="text-neg">*</span>
+            <span className="mb-1 block text-[13.5px] font-medium text-ink-2">
+              Outcome, so the pipeline stays explainable
             </span>
             <textarea
               value={outcome}
               onChange={(e) => setOutcome(e.target.value)}
-              placeholder="e.g. Hired as L5, start date Oct 6 · Not moving forward after onsite"
-              className="textarea-field w-full text-[13px]"
+              placeholder="Hired as L5, starts Oct 6"
+              className="textarea-field min-h-[64px] w-full text-[14px]"
               maxLength={2000}
               aria-invalid={attemptedClose && !outcome.trim()}
+              autoFocus
             />
           </label>
           {attemptedClose && !outcome.trim() ? (
-            <p role="alert" className="text-[12px] text-neg">
-              Add a short outcome so the pipeline stays explainable.
+            <p role="alert" className="text-[13px] text-neg">
+              Add a short outcome before closing.
             </p>
           ) : null}
-          <Button type="submit" variant="primary" disabled={transition.isPending}>
-            {transition.isPending && transition.variables?.to_status === 'closed'
-              ? 'Closing…'
-              : 'Close request'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button type="submit" variant="primary" disabled={transition.isPending}>
+              {transition.isPending && transition.variables?.to_status === 'closed'
+                ? 'Closing'
+                : 'Close request'}
+            </Button>
+            <Button variant="ghost" onClick={() => setClosing(false)}>
+              Cancel
+            </Button>
+          </div>
         </form>
       ) : null}
 
-      {manual.length > 0 ? (
-        <Disclosure summary="Record update manually">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!chosenManual) return;
-              transition.mutate({
-                to_status: chosenManual,
-                note: manualNote.trim() || null,
-                reason: null,
-              });
-            }}
-            className="space-y-2 rounded bg-ground border border-line p-3"
-          >
-            <p className="text-[12px] text-muted">
-              Use this when the employee told you something outside Slack.
-            </p>
-            <label className="block">
-              <span className="block text-[12.5px] font-medium text-ink-2 mb-1">New status</span>
-              <select
-                value={chosenManual ?? ''}
-                onChange={(e) => setManualStatus(e.target.value as Status)}
-                className="field w-full text-[13px]"
-              >
-                {manual.map((s) => (
-                  <option key={s} value={s}>
-                    {STATUS_LABELS[s]}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="block text-[12.5px] font-medium text-ink-2 mb-1">
-                Note <span className="text-muted font-normal">(optional)</span>
-              </span>
-              <textarea
-                value={manualNote}
-                onChange={(e) => setManualNote(e.target.value)}
-                className="textarea-field w-full text-[13px] min-h-[60px]"
-                maxLength={2000}
-              />
-            </label>
-            <Button type="submit" disabled={transition.isPending || !chosenManual}>
-              {transition.isPending && transition.variables?.to_status !== 'closed'
-                ? 'Saving…'
-                : 'Record update'}
-            </Button>
-          </form>
-        </Disclosure>
-      ) : null}
-
       {errorText ? (
-        <p role="alert" className="text-[12.5px] text-neg">
-          {errorText}
-        </p>
-      ) : null}
-      {transition.isSuccess ? (
-        <p className="text-[12.5px] text-pos" aria-live="polite">
-          Updated to {STATUS_LABELS[transition.data.status]}.
+        <p role="alert" className="mt-2 text-[13.5px] text-neg">
+          {errorText}. Try again.
         </p>
       ) : null}
     </div>

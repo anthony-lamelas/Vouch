@@ -15,22 +15,22 @@ export function AppShell() {
   const demo = config?.auth_disabled ?? false;
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-30 h-12 bg-surface border-b border-line">
-        <div className="mx-auto max-w-[1400px] h-full px-6 flex items-center gap-6">
-          <NavLink to="/roles" className="flex items-center gap-2 pr-2" aria-label="VOUCH home">
+    <div className="flex min-h-screen flex-col bg-canvas">
+      <header className="sticky top-0 z-30 h-12 border-b border-line bg-surface">
+        <div className="mx-auto flex h-full w-full max-w-[1280px] items-center gap-8 px-6">
+          <NavLink to="/roles" className="rounded-[2px]" aria-label="VOUCH home">
             <Wordmark />
           </NavLink>
-          <nav aria-label="Primary" className="flex items-center gap-1 h-full">
+          <nav aria-label="Primary" className="flex h-full items-center gap-5">
             {NAV.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `relative h-full inline-flex items-center px-3 text-[13px] font-medium transition-colors ${
-                    isActive ? 'text-ink' : 'text-muted hover:text-ink'
-                  } after:absolute after:left-3 after:right-3 after:-bottom-px after:h-[2px] ${
-                    isActive ? 'after:bg-accent' : 'after:bg-transparent'
+                  `relative inline-flex h-full items-center text-[14px] font-medium transition-colors after:absolute after:inset-x-0 after:-bottom-px after:h-[2px] ${
+                    isActive
+                      ? 'text-spruce after:bg-spruce'
+                      : 'text-ink-2 hover:text-ink after:bg-transparent'
                   }`
                 }
               >
@@ -38,17 +38,16 @@ export function AppShell() {
               </NavLink>
             ))}
           </nav>
-          <div className="ml-auto flex items-center gap-3 text-[12.5px]">
+          <div className="ml-auto flex items-center gap-3 text-[13.5px]">
             {demo ? (
               <span
-                className="inline-flex items-center gap-1.5 rounded-full border border-warn/40 bg-warn-soft px-2.5 py-0.5 text-[11.5px] font-medium text-warn"
+                className="rounded-control bg-ochre-soft px-2 font-medium leading-[20px] text-ochre"
                 title="AUTH_DISABLED is set on the API; every request runs as the local recruiter."
               >
-                <span className="size-1.5 rounded-full bg-warn" aria-hidden />
-                Local demo mode
+                Demo
               </span>
             ) : null}
-            <span className="text-ink-2" title={user?.email ?? undefined}>
+            <span className="text-ink-2" title={user?.email}>
               {me.data?.name ?? user?.email}
             </span>
             {!demo ? (
@@ -57,7 +56,7 @@ export function AppShell() {
                 onClick={() => {
                   void signOut().then(() => navigate('/login', { replace: true }));
                 }}
-                className="rounded border border-line-2 bg-surface px-2.5 py-1 text-[12px] font-medium text-ink-2 hover:bg-ground"
+                className="rounded-control px-1.5 py-0.5 font-medium text-ink-2 hover:bg-neutral-soft hover:text-ink"
               >
                 Sign out
               </button>
@@ -65,7 +64,7 @@ export function AppShell() {
           </div>
         </div>
       </header>
-      <main className="flex-1 mx-auto w-full max-w-[1400px] px-6 py-5">
+      <main className="mx-auto w-full max-w-[1280px] flex-1 px-6 py-6">
         <Outlet />
       </main>
     </div>

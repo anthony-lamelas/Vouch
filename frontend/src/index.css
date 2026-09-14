@@ -1,58 +1,69 @@
 @import 'tailwindcss';
 
+/*
+ * Design tokens. The default Tailwind palette is wiped so every neutral in the app carries the
+ * slight green cast below; there is no pure grey anywhere.
+ */
 @theme {
-  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: 'Bricolage Grotesque', 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
-
-  --color-ground: #f5f6f8;
+  --color-*: initial;
+  --color-canvas: #f2f4f1;
   --color-surface: #ffffff;
-  --color-raised: #eef0f3;
-  --color-ink: #17191d;
-  --color-ink-2: #3a404a;
-  --color-muted: #5f6673;
-  --color-faint: #8a919c;
-  --color-line: #e2e5ea;
-  --color-line-2: #c9ced6;
+  --color-ink: #161b19;
+  --color-ink-2: #4e5955;
+  --color-muted: #7a857f;
+  --color-line: #dfe4e0;
+  --color-line-strong: #c9d1cc;
 
-  --color-accent: #0b5c6b;
-  --color-accent-hover: #084a57;
-  --color-accent-soft: #e4eff1;
-  --color-accent-ink: #063c46;
+  --color-spruce: #1e5c4a;
+  --color-spruce-hover: #174a3c;
+  --color-spruce-soft: #e4efea;
+  --color-spruce-ink: #164236;
 
-  --color-pos: #1f7a3e;
-  --color-pos-soft: #e5f3ea;
-  --color-warn: #9a6700;
-  --color-warn-soft: #fbf1d6;
-  --color-neg: #b3261e;
-  --color-neg-soft: #fbe8e6;
+  --color-ochre: #a85a12;
+  --color-ochre-soft: #f6ebdd;
 
-  --shadow-drawer: -12px 0 32px -12px rgb(23 25 29 / 0.18);
-  --shadow-pop: 0 8px 24px -8px rgb(23 25 29 / 0.22), 0 0 0 1px rgb(23 25 29 / 0.06);
+  --color-pos: #1e5c4a;
+  --color-pos-soft: #e4efea;
+  --color-neg: #8c2f2f;
+  --color-neg-soft: #f5e4e4;
+  --color-neutral-soft: #eef1ef;
+
+  --font-sans:
+    'Schibsted Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial,
+    sans-serif;
+  --font-serif:
+    'Newsreader', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman',
+    serif;
+
+  --radius-control: 6px;
+  --radius-drawer: 8px;
+
+  --shadow-*: initial;
+  --shadow-drawer: -16px 0 40px -16px rgb(22 27 25 / 0.22);
 }
 
 @layer base {
   html {
     color-scheme: light;
-    background: var(--color-ground);
+    background: var(--color-canvas);
   }
   body {
     margin: 0;
     font-family: var(--font-sans);
-    font-size: 13.5px;
+    font-size: 14px;
     line-height: 1.45;
     color: var(--color-ink);
-    background: var(--color-ground);
+    background: var(--color-canvas);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
   ::selection {
-    background: var(--color-accent-soft);
-    color: var(--color-accent-ink);
+    background: var(--color-spruce-soft);
+    color: var(--color-spruce-ink);
   }
   :focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--color-spruce);
     outline-offset: 2px;
-    border-radius: 2px;
   }
   button,
   input,
@@ -61,17 +72,32 @@
     font: inherit;
     color: inherit;
   }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
   a {
     color: inherit;
     text-decoration: none;
   }
   h1,
   h2,
-  h3 {
-    font-family: var(--font-display);
-    font-variation-settings: 'opsz' 24;
-    letter-spacing: -0.01em;
+  h3,
+  h4,
+  p,
+  ul,
+  ol,
+  dl,
+  figure,
+  blockquote {
     margin: 0;
+  }
+  ul,
+  ol {
+    padding: 0;
+    list-style: none;
   }
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -79,71 +105,88 @@
     *::after {
       transition-duration: 0.01ms !important;
       animation-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
     }
   }
 }
 
+/* Tabular numerals for anything that lines up in columns. */
 @utility tnum {
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: 'tnum' 1;
 }
 
 @utility link {
-  color: var(--color-accent);
+  color: var(--color-spruce);
   text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  text-decoration-color: color-mix(in srgb, var(--color-spruce) 35%, transparent);
   text-underline-offset: 2px;
+  border-radius: 2px;
   &:hover {
-    text-decoration-color: var(--color-accent);
+    text-decoration-color: var(--color-spruce);
   }
 }
 
-@utility wordmark {
-  font-family: var(--font-display);
-  font-variation-settings: 'opsz' 96;
-  font-weight: 800;
-  letter-spacing: -0.045em;
+/* A person's name: the one thing on every screen that gets its own voice. */
+@utility name {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 1.25;
+  letter-spacing: -0.005em;
+  color: var(--color-ink);
 }
 
-/* Data tables */
+/* Data tables: no box around them, tone and 1px rules do the separating. */
 @utility data-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-variant-numeric: tabular-nums lining-nums;
+  font-size: 14px;
   & thead th {
     position: sticky;
-    top: 0;
+    top: 48px;
     z-index: 2;
     background: var(--color-surface);
     text-align: left;
     font-weight: 500;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--color-muted);
     padding: 8px 12px;
-    border-bottom: 1px solid var(--color-line-2);
+    border-bottom: 1px solid var(--color-line-strong);
     white-space: nowrap;
   }
   & tbody td {
-    padding: 9px 12px;
+    padding: 10px 12px;
     border-bottom: 1px solid var(--color-line);
     vertical-align: top;
   }
-  & tbody tr {
-    transition: background-color 80ms linear;
+  & tbody th.group {
+    position: sticky;
+    top: 81px;
+    z-index: 1;
+    text-align: left;
+    padding: 14px 12px 6px;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-line);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-ink);
   }
   & tbody tr.is-clickable {
     cursor: pointer;
   }
   & tbody tr.is-clickable:hover {
-    background: var(--color-ground);
+    background: var(--color-canvas);
   }
   & tbody tr.is-selected {
-    background: var(--color-accent-soft);
-    box-shadow: inset 3px 0 0 var(--color-accent);
+    background: var(--color-spruce-soft);
+  }
+  & tbody tr.is-stale > td:first-child {
+    box-shadow: inset 2px 0 0 var(--color-ochre);
   }
   & tbody tr:focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--color-spruce);
     outline-offset: -2px;
   }
   & td.num,
@@ -156,42 +199,45 @@
 @utility field {
   height: 32px;
   padding: 0 10px;
-  border: 1px solid var(--color-line-2);
-  border-radius: 4px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-control);
   background: var(--color-surface);
   color: var(--color-ink);
   &::placeholder {
-    color: var(--color-faint);
+    color: var(--color-muted);
   }
   &:hover {
-    border-color: var(--color-faint);
+    border-color: var(--color-muted);
   }
-  &:focus {
-    outline: none;
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px var(--color-accent-soft);
+  &:focus-visible {
+    outline-offset: 0;
+    border-color: var(--color-spruce);
   }
   &:disabled {
-    background: var(--color-raised);
+    background: var(--color-neutral-soft);
     color: var(--color-muted);
   }
 }
 
 @utility textarea-field {
   padding: 8px 10px;
-  border: 1px solid var(--color-line-2);
-  border-radius: 4px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-control);
   background: var(--color-surface);
   color: var(--color-ink);
+  line-height: 1.5;
   resize: vertical;
   min-height: 80px;
   &::placeholder {
-    color: var(--color-faint);
+    color: var(--color-muted);
   }
-  &:focus {
-    outline: none;
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px var(--color-accent-soft);
+  &:focus-visible {
+    outline-offset: 0;
+    border-color: var(--color-spruce);
+  }
+  &:disabled {
+    background: var(--color-neutral-soft);
+    color: var(--color-muted);
   }
 }
 
