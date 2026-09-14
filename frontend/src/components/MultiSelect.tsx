@@ -6,6 +6,8 @@ import { TierBadge } from './TierBadge';
 export interface Option {
   value: string;
   tier?: number;
+  /** How many rows carry this value; shown muted on the right. */
+  count?: number;
 }
 
 /** Linear-style filter pill: "+ Company" that opens a searchable checkbox list. */
@@ -110,6 +112,11 @@ export function MultiSelect({
                       />
                       <span className="flex-1 truncate">{o.value}</span>
                       {o.tier !== undefined ? <TierBadge tier={o.tier} /> : null}
+                      {o.count !== undefined ? (
+                        <span className="text-[12px] tracking-normal text-muted tnum">
+                          {o.count}
+                        </span>
+                      ) : null}
                     </label>
                   </li>
                 );
