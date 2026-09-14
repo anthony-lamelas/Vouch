@@ -431,12 +431,6 @@ function Actions({
     return (
       <span className="text-[13px] text-muted">
         Closed {formatRelative(r.last_event_at ?? r.updated_at)}
-        {r.closed_outcome ? (
-          <>
-            {' '}
-            · <span className="text-ink">“{r.closed_outcome}”</span>
-          </>
-        ) : null}
       </span>
     );
   }
