@@ -230,7 +230,7 @@ function buildSteps(
           : 0;
 
   const labels = [
-    'Asked',
+    `Asked ${employeeFirst} to reach out`,
     `${employeeFirst} reached out`,
     `${contactFirst} answered`,
     'Closed',
