@@ -21,7 +21,14 @@ from app.services.referrals import (
     employee_actor,
     latest_open_request_for_slack_user,
 )
-from app.services.slack import BUTTONS, get_notifier, verify_signature
+from app.services.slack import (
+    BUTTONS,
+    DECLINE_MODAL_CALLBACK,
+    decline_modal,
+    decline_note,
+    get_notifier,
+    verify_signature,
+)
 
 router = APIRouter(prefix="/slack", tags=["slack"])
 log = logging.getLogger("vouch.slack")
@@ -57,7 +64,11 @@ async def interactions(request: Request) -> Response:
     from urllib.parse import unquote_plus
 
     payload: dict[str, Any] = json.loads(unquote_plus(form.get("payload", "{}")))
-    if payload.get("type") != "block_actions":
+    kind = payload.get("type")
+    if kind == "view_submission":
+        _handle_view_submission(payload, settings)
+        return Response(status_code=200)
+    if kind != "block_actions":
         return Response(status_code=200)
     service = _service(settings)
     try:
@@ -68,6 +79,17 @@ async def interactions(request: Request) -> Response:
             target, reason, _ = mapping
             request_id = uuid.UUID(str(action.get("value")))
             req = service.get(request_id)
+            if target == Status.EMPLOYEE_DECLINED and Status(req.status) == Status.REQUESTED:
+                # Ask why first; the decline is recorded when the modal is submitted. If the
+                # modal can't open (no trigger, Slack off), record a plain decline instead.
+                opened = service.notifier.open_view(
+                    trigger_id=str(payload.get("trigger_id", "")),
+                    view=decline_modal(
+                        str(req.id), contact_first=req.contact.full_name.split(" ")[0]
+                    ),
+                )
+                if opened:
+                    continue
             try:
                 service.transition(
                     request_id, to_status=target, actor=employee_actor(req.employee), reason=reason
@@ -77,6 +99,32 @@ async def interactions(request: Request) -> Response:
     finally:
         service.db.close()
     return Response(status_code=200)
+
+
+def _handle_view_submission(payload: dict[str, Any], settings: Settings) -> None:
+    view: dict[str, Any] = payload.get("view", {})
+    if view.get("callback_id") != DECLINE_MODAL_CALLBACK:
+        return
+    values: dict[str, Any] = view.get("state", {}).get("values", {})
+    reason = str(
+        values.get("reason", {}).get("reason", {}).get("selected_option", {}).get("value", "")
+    )
+    detail = str(values.get("detail", {}).get("detail", {}).get("value") or "")
+    request_id = uuid.UUID(str(view.get("private_metadata")))
+    service = _service(settings)
+    try:
+        req = service.get(request_id)
+        try:
+            service.transition(
+                request_id,
+                to_status=Status.EMPLOYEE_DECLINED,
+                actor=employee_actor(req.employee),
+                note=decline_note(reason, detail),
+            )
+        except IllegalTransitionError as exc:
+            log.info("ignored stale decline form: %s", exc)
+    finally:
+        service.db.close()
 
 
 def _handle_message_event(event: dict[str, Any], settings: Settings) -> None:
@@ -118,16 +166,10 @@ def _handle_message_event(event: dict[str, Any], settings: Settings) -> None:
             note=f"Reply: {text[:500]}",
             reason=result.reason,
         )
-        final = Status(updated.status)
-        suffix = (
-            " I've asked the next-closest colleague."
-            if (result.target == Status.EMPLOYEE_DECLINED and final == Status.REQUESTED)
-            else ""
-        )
         service.notifier.reply(
             channel_id=channel_id,
             thread_ts=str(thread_ts) if thread_ts else None,
-            text=f"Got it, marked as *{LABELS[result.target]}*.{suffix}",
+            text=f"Got it, marked as *{LABELS[Status(updated.status)]}*.",
         )
     except Exception:
         log.exception("slack event handling failed")

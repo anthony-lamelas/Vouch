@@ -22,7 +22,7 @@ from app.schemas import (
 )
 from app.services.lifecycle import LABELS, STALE_AFTER_DAYS, TRANSITIONS, Status
 from app.services.ownership import display_name, recruiter_names
-from app.services.referrals import shared_history
+from app.services.referrals import other_connections, shared_history
 
 
 def connection_out(c: Connection) -> ConnectionOut:
@@ -138,6 +138,7 @@ def request_detail(db: Session, r: ReferralRequest) -> RequestDetail:
         closed_outcome=r.closed_outcome,
         allowed_transitions=sorted(TRANSITIONS[Status(r.status)], key=lambda s: s.value),
         connection=connection_out(connection) if connection else None,
+        alternatives=[connection_out(c) for c in other_connections(db, r)],
         reasons=ms.reasons if ms else [],
         events=[
             EventOut(

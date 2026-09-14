@@ -11,7 +11,7 @@ from slack_sdk.signature import SignatureVerifier
 
 from app.config import Settings
 from app.models import Employee, ReferralRequest
-from app.services.lifecycle import DeclineReason, Status, next_employee_actions
+from app.services.lifecycle import DECLINE_LABELS, DeclineReason, Status, next_employee_actions
 from app.services.outreach import Drafts, OutreachContext
 
 BUTTONS: dict[str, tuple[Status, DeclineReason | None, str | None]] = {
@@ -118,6 +118,7 @@ def status_blocks(
     contact_first: str = "them",
     employee_first: str = "",
     suggested_message: str = "",
+    note: str = "",
 ) -> list[dict[str, Any]]:
     """Return a copy of the message blocks reflecting the new status and next buttons."""
     kept = [
@@ -154,10 +155,83 @@ def status_blocks(
                 },
             }
         )
+    if status == Status.EMPLOYEE_DECLINED:
+        thanks = f"Thanks{', ' + employee_first if employee_first else ''}, no problem."
+        why = f" Noted: _{note}_." if note else ""
+        kept.append(
+            {
+                "type": "section",
+                "block_id": "vouch_status",
+                "text": {"type": "mrkdwn", "text": f"{thanks}{why} I've passed that along."},
+            }
+        )
     buttons = action_buttons(status, request_id, contact_first)
     if buttons:
         kept.append({"type": "actions", "block_id": "vouch_actions", "elements": buttons})
     return kept
+
+
+DECLINE_MODAL_CALLBACK = "vouch_decline_reason"
+
+
+def decline_modal(request_id: str, *, contact_first: str) -> dict[str, Any]:
+    """The 'why not?' form Slack opens when an employee taps No. Reason feeds the timeline."""
+    options = [
+        {
+            "text": {"type": "plain_text", "text": DECLINE_LABELS[reason]},
+            "value": reason.value,
+        }
+        for reason in DeclineReason
+    ]
+    return {
+        "type": "modal",
+        "callback_id": DECLINE_MODAL_CALLBACK,
+        "private_metadata": request_id,
+        "title": {"type": "plain_text", "text": "No problem"},
+        "submit": {"type": "plain_text", "text": "Send"},
+        "close": {"type": "plain_text", "text": "Cancel"},
+        "blocks": [
+            {
+                "type": "input",
+                "block_id": "reason",
+                "label": {"type": "plain_text", "text": f"Why not {contact_first}?"},
+                "element": {
+                    "type": "static_select",
+                    "action_id": "reason",
+                    "placeholder": {"type": "plain_text", "text": "Pick one"},
+                    "options": options,
+                },
+            },
+            {
+                "type": "input",
+                "block_id": "detail",
+                "optional": True,
+                "label": {"type": "plain_text", "text": "Anything the recruiter should know?"},
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "detail",
+                    "multiline": True,
+                    "max_length": 500,
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Helps them decide whether to ask someone else",
+                    },
+                },
+            },
+        ],
+    }
+
+
+def decline_note(reason: str, detail: str) -> str:
+    """One line for the timeline: the picked reason, then the employee's own words if any."""
+    try:
+        label = DECLINE_LABELS[DeclineReason(reason)]
+    except ValueError:
+        label = DECLINE_LABELS[None]
+    detail = detail.strip()
+    if not detail:
+        return label
+    return detail if label == DECLINE_LABELS[DeclineReason.OTHER] else f"{label}: {detail}"
 
 
 class Notifier(Protocol):
@@ -170,6 +244,8 @@ class Notifier(Protocol):
     ) -> bool: ...
 
     def reply(self, *, channel_id: str, thread_ts: str | None, text: str) -> None: ...
+
+    def open_view(self, *, trigger_id: str, view: dict[str, Any]) -> bool: ...
 
 
 class NullNotifier:
@@ -190,6 +266,9 @@ class NullNotifier:
 
     def reply(self, *, channel_id: str, thread_ts: str | None, text: str) -> None:
         return None
+
+    def open_view(self, *, trigger_id: str, view: dict[str, Any]) -> bool:
+        return False
 
 
 class SlackNotifier:
@@ -243,6 +322,15 @@ class SlackNotifier:
             )
         except SlackApiError:
             return None
+
+    def open_view(self, *, trigger_id: str, view: dict[str, Any]) -> bool:
+        if not trigger_id:
+            return False
+        try:
+            self._client.views_open(trigger_id=trigger_id, view=view)
+        except SlackApiError:
+            return False
+        return True
 
 
 def get_notifier(settings: Settings) -> Notifier:

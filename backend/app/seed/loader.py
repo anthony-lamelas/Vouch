@@ -202,8 +202,23 @@ _SCENARIOS: tuple[tuple[str, list[tuple[Status, int, str | None]]], ...] = (
         "infrastructure",
         [
             (Status.REQUESTED, 5, None),
-            (Status.EMPLOYEE_DECLINED, 4, "Declined to refer"),
+            (
+                Status.EMPLOYEE_DECLINED,
+                4,
+                "Doesn't know them well enough: we only overlapped for a quarter",
+            ),
             (Status.REQUESTED, 4, None),
+        ],
+    ),
+    (
+        "product",
+        [
+            (Status.REQUESTED, 2, None),
+            (
+                Status.EMPLOYEE_DECLINED,
+                1,
+                "Not a fit for this role: she's moved into people management and loves it",
+            ),
         ],
     ),
 )
@@ -286,11 +301,8 @@ def seed_demo_requests(db: Session) -> int:
             if status == Status.REQUESTED and previous == Status.EMPLOYEE_DECLINED:
                 nxt = strongest_connection(db, contact.id, exclude={employee.id})
                 assert nxt is not None
-                actor = "system"
-                note = (
-                    f"Re-routed from {employee.full_name} to {nxt.employee.full_name} "
-                    f"(next-strongest connection, {float(nxt.strength):.2f})"
-                )
+                actor = role.owner_email or RECRUITER
+                note = f"Re-routed from {employee.full_name} to {nxt.employee.full_name}"
                 employee = nxt.employee
                 req.employee_id = employee.id
             elif status == Status.REQUESTED:
@@ -310,6 +322,7 @@ def seed_demo_requests(db: Session) -> int:
                 to_status=status.value,
                 actor=actor,
                 note=note,
+                employee_id=employee.id,
             )
             event.created_at = at
             db.add(event)

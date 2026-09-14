@@ -62,6 +62,10 @@ class ReferralEvent(Base):
     to_status: Mapped[str] = mapped_column(String(32), nullable=False)
     actor: Mapped[str] = mapped_column(String(255), nullable=False)
     note: Mapped[str | None] = mapped_column(Text)
+    # The employee the request was with when this happened (the decliner, or the new assignee).
+    employee_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("employee.id", ondelete="SET NULL")
+    )
     created_at: Mapped[datetime] = created_at_col()
 
     request: Mapped[ReferralRequest] = relationship(back_populates="events")

@@ -20,11 +20,25 @@ class Status(StrEnum):
 class DeclineReason(StrEnum):
     DONT_KNOW_WELL = "dont_know_well"
     NOT_A_FIT = "not_a_fit"
+    NOT_LOOKING = "not_looking"
+    OTHER = "other"
+
+
+# Why an employee passed, in the recruiter's words. Shown on the timeline and in Slack.
+DECLINE_LABELS: Final[dict[DeclineReason | None, str]] = {
+    DeclineReason.DONT_KNOW_WELL: "Doesn't know them well enough",
+    DeclineReason.NOT_A_FIT: "Not a fit for this role",
+    DeclineReason.NOT_LOOKING: "They wouldn't be looking",
+    DeclineReason.OTHER: "Other",
+    None: "Declined to refer",
+}
 
 
 # Saying yes means the employee will reach out; the outcome states record what happened next.
+# A decline parks the request in EMPLOYEE_DECLINED with the employee's reason; the recruiter then
+# decides whether to ask another connected colleague (back to REQUESTED) or close it.
 # A request that sits in EMPLOYEE_ACCEPTED longer than STALE_AFTER_DAYS is flagged stale in the
-# UI (derived at read time, nothing stored) so the recruiter can nudge, re-route or close.
+# UI (derived at read time, nothing stored) so the recruiter can nudge or close.
 TRANSITIONS: Final[dict[Status, frozenset[Status]]] = {
     Status.REQUESTED: frozenset(
         {Status.EMPLOYEE_ACCEPTED, Status.EMPLOYEE_DECLINED, Status.CLOSED}

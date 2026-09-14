@@ -36,7 +36,7 @@ export function eventSentence(from: Status | null, to: Status, contactFirstName:
   if (from === to && to === 'employee_accepted') return 'sent a nudge';
   switch (to) {
     case 'requested':
-      return from === 'employee_declined' ? 're-routed the request' : 'opened the request';
+      return from === 'employee_declined' ? 'asked someone else' : 'opened the request';
     case 'employee_accepted':
       return 'agreed to reach out';
     case 'employee_declined':

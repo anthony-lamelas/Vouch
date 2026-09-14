@@ -149,6 +149,7 @@ export interface RoleBrief {
   team: string;
   department: string;
   location: string;
+  job_url: string;
   owner_email: string | null;
   owner_name: string | null;
 }
@@ -206,6 +207,8 @@ export interface RequestDetail extends RequestSummary {
   closed_outcome: string | null;
   allowed_transitions: Status[];
   connection: ConnectionOut | null;
+  /** Other connected colleagues the recruiter could ask instead, strongest first. */
+  alternatives: ConnectionOut[];
   reasons: Reason[];
   events: EventOut[];
   messages: MessageOut[];
@@ -238,6 +241,11 @@ export interface AskPreviewOut {
   casual: string;
   formal: string;
   reasons: Reason[];
+}
+
+export interface RerouteIn {
+  /** Which colleague to ask next; omitted means the strongest remaining connection. */
+  employee_id?: string | null;
 }
 
 export interface TransitionIn {

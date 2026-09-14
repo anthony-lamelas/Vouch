@@ -3,6 +3,7 @@ import hmac
 import json
 import time
 import uuid
+from typing import Any
 from urllib.parse import quote
 
 from fastapi.testclient import TestClient
@@ -223,7 +224,7 @@ def test_request_lifecycle_end_to_end(client: TestClient, db: Session) -> None:
     assert again.status_code == 201
 
 
-def test_decline_reroutes_to_next_strongest_employee(client: TestClient, db: Session) -> None:
+def _contact_with_two_connections(client: TestClient, db: Session) -> tuple[dict[str, Any], str]:
     role = _first_role(client, "engineering")
     multi = (
         select(Connection.contact_id)
@@ -240,24 +241,118 @@ def test_decline_reroutes_to_next_strongest_employee(client: TestClient, db: Ses
         .order_by(MatchScore.score.desc())
     )
     assert contact_id is not None
+    return role, str(contact_id)
+
+
+def test_decline_waits_for_the_recruiter_then_reroutes(client: TestClient, db: Session) -> None:
+    role, contact_id = _contact_with_two_connections(client, db)
     created = client.post(
-        "/api/requests", json={"contact_id": str(contact_id), "role_id": role["id"]}
+        "/api/requests", json={"contact_id": contact_id, "role_id": role["id"]}
     ).json()
     first_employee = created["employee"]["id"]
 
     r = client.post(
         f"/api/requests/{created['id']}/transition",
-        json={"to_status": "employee_declined"},
+        json={"to_status": "employee_declined", "reason": "not_a_fit"},
     )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    # Nothing happens on its own: the request parks with the reason for the recruiter.
+    assert body["status"] == "employee_declined"
+    assert body["employee"]["id"] == first_employee
+    assert body["events"][-1]["note"] == "Not a fit for this role"
+    assert body["alternatives"], "other connected colleagues are offered"
+    assert first_employee not in {a["employee"]["id"] for a in body["alternatives"]}
+    assert "requested" in body["allowed_transitions"]
+
+    r = client.post(f"/api/requests/{created['id']}/reroute", json={})
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["status"] == "requested"
     assert body["employee"]["id"] != first_employee
     kinds = [e["to_status"] for e in body["events"]]
     assert kinds == ["requested", "employee_declined", "requested"]
-    assert body["events"][-1]["actor_label"] == "VOUCH"
-    assert "Re-routed" in body["events"][-1]["note"]
+    assert body["events"][-1]["actor_label"] != "VOUCH"
+    assert body["events"][-1]["note"].startswith("Re-routed from ")
+    assert "next-strongest" not in body["events"][-1]["note"]
     assert len(body["messages"]) == 2
+    # Only a parked request can be re-routed.
+    assert client.post(f"/api/requests/{created['id']}/reroute", json={}).status_code == 409
+
+
+def test_reroute_to_a_chosen_colleague(client: TestClient, db: Session) -> None:
+    role, contact_id = _contact_with_two_connections(client, db)
+    created = client.post(
+        "/api/requests", json={"contact_id": contact_id, "role_id": role["id"]}
+    ).json()
+    client.post(
+        f"/api/requests/{created['id']}/transition", json={"to_status": "employee_declined"}
+    )
+    detail = client.get(f"/api/requests/{created['id']}").json()
+    chosen = detail["alternatives"][-1]["employee"]["id"]
+    r = client.post(f"/api/requests/{created['id']}/reroute", json={"employee_id": chosen})
+    assert r.status_code == 200, r.text
+    assert r.json()["employee"]["id"] == chosen
+    # Someone who already passed can't be asked again.
+    client.post(
+        f"/api/requests/{created['id']}/transition", json={"to_status": "employee_declined"}
+    )
+    r = client.post(
+        f"/api/requests/{created['id']}/reroute", json={"employee_id": created["employee"]["id"]}
+    )
+    assert r.status_code == 409
+
+
+def _fresh_request(client: TestClient, db: Session) -> ReferralRequest:
+    role, contact_id = _contact_with_two_connections(client, db)
+    created = client.post("/api/requests", json={"contact_id": contact_id, "role_id": role["id"]})
+    assert created.status_code == 201, created.text
+    req = db.get(ReferralRequest, uuid.UUID(created.json()["id"]))
+    assert req is not None
+    return req
+
+
+def test_slack_decline_button_opens_reason_form(client: TestClient, db: Session) -> None:
+    req = _fresh_request(client, db)
+    # With Slack disabled the form can't open, so the plain decline is recorded instead.
+    payload = {
+        "type": "block_actions",
+        "user": {"id": "U123"},
+        "trigger_id": "123.456",
+        "actions": [{"action_id": "vouch_decline", "value": str(req.id)}],
+    }
+    body = "payload=" + quote(json.dumps(payload))
+    r = client.post("/api/slack/interactions", content=body, headers=_slack_headers(body))
+    assert r.status_code == 200
+    db.refresh(req)
+    assert req.status == "employee_declined"
+    assert req.events[-1].note == "Declined to refer"
+
+
+def test_slack_decline_form_records_the_reason(client: TestClient, db: Session) -> None:
+    req = _fresh_request(client, db)
+    payload = {
+        "type": "view_submission",
+        "user": {"id": "U123"},
+        "view": {
+            "callback_id": "vouch_decline_reason",
+            "private_metadata": str(req.id),
+            "state": {
+                "values": {
+                    "reason": {"reason": {"selected_option": {"value": "dont_know_well"}}},
+                    "detail": {"detail": {"value": "We overlapped for one quarter, years ago."}},
+                }
+            },
+        },
+    }
+    body = "payload=" + quote(json.dumps(payload))
+    r = client.post("/api/slack/interactions", content=body, headers=_slack_headers(body))
+    assert r.status_code == 200
+    db.refresh(req)
+    assert req.status == "employee_declined"
+    assert req.events[-1].note == (
+        "Doesn't know them well enough: We overlapped for one quarter, years ago."
+    )
 
 
 def test_candidate_pass_auto_closes(client: TestClient) -> None:

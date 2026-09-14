@@ -1,7 +1,13 @@
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
-import { useContact, useNudgeRequest, useRequest, useTransitionRequest } from '../api/queries';
+import {
+  useContact,
+  useNudgeRequest,
+  useRequest,
+  useRerouteRequest,
+  useTransitionRequest,
+} from '../api/queries';
 import type { EventOut, RequestDetail, Status } from '../api/types';
 import { Button } from '../components/Button';
 import { ErrorState, Skeleton } from '../components/EmptyState';
@@ -57,7 +63,7 @@ function RequestView({ r }: { r: RequestDetail }) {
           </span>
         }
       >
-        <Actions r={r} employeeFirst={employeeFirst} />
+        <Actions r={r} employeeFirst={employeeFirst} contactFirst={contactFirst} />
       </PageHeader>
 
       <div className="mt-4 grid grid-cols-1 items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -103,7 +109,8 @@ function Timeline({
   contactFirst: string;
 }) {
   const employeeFirst = firstName(r.employee.full_name);
-  const opened = events.find((e) => e.to_status === 'requested' && e.from_status === null);
+  // The ask text belongs to whoever was asked last: the opening event, or the latest re-route.
+  const opened = [...events].reverse().find((e) => e.to_status === 'requested');
   return (
     <ol className="mt-4 flex flex-col gap-5" aria-label="Timeline">
       {events.map((e, i) => {
@@ -214,19 +221,15 @@ function Attributes({ r }: { r: RequestDetail }) {
         <Row label="Status">
           <StatusPill status={r.status} />
         </Row>
-        <Row label="Candidate">
-          <Link to={`/roles/${r.role.id}?contact=${r.contact.id}`} className="link">
-            {r.contact.full_name}
-          </Link>
-        </Row>
+        <Row label="Candidate">{r.contact.full_name}</Row>
         <Row label="Current role">
           {r.contact.current_title} at {r.contact.current_company}
         </Row>
         <Row label="Location">{r.contact.location}</Row>
         <Row label="Role">
-          <Link to={`/roles/${r.role.id}`} className="link">
+          <a href={r.role.job_url} target="_blank" rel="noreferrer" className="link">
             {r.role.title}
-          </Link>
+          </a>
         </Row>
         <Row label="Team">{r.role.team}</Row>
         <Row label="Employee asked">
@@ -263,7 +266,7 @@ function Attributes({ r }: { r: RequestDetail }) {
           </span>
         </Row>
       </dl>
-      <details open className="group mt-4 border-t border-line pt-4">
+      <details className="group mt-4 border-t border-line pt-4">
         <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[13px] font-semibold text-ink [&::-webkit-details-marker]:hidden">
           <span aria-hidden className="text-muted transition-transform group-open:rotate-90">
             ›
@@ -396,15 +399,27 @@ function Stepper({
   );
 }
 
-function Actions({ r, employeeFirst }: { r: RequestDetail; employeeFirst: string }) {
+function Actions({
+  r,
+  employeeFirst,
+  contactFirst,
+}: {
+  r: RequestDetail;
+  employeeFirst: string;
+  contactFirst: string;
+}) {
   const nudge = useNudgeRequest(r.id);
   const transition = useTransitionRequest(r.id);
+  const reroute = useRerouteRequest(r.id);
   const rootRef = useRef<HTMLDivElement>(null);
-  const [panel, setPanel] = useState<'close' | 'more' | null>(null);
+  const [panel, setPanel] = useState<'close' | 'more' | 'reroute' | null>(null);
   const closePanel = useCallback(() => setPanel(null), []);
   const [outcome, setOutcome] = useState('');
   const [attemptedClose, setAttemptedClose] = useState(false);
-  const manual: Status[] = r.allowed_transitions.filter((s) => s !== 'closed');
+  const [nextEmployee, setNextEmployee] = useState<string | null>(null);
+  const declined = r.status === 'employee_declined';
+  // Asking someone else has its own flow; "requested" is not a status to record by hand.
+  const manual: Status[] = r.allowed_transitions.filter((s) => s !== 'closed' && s !== 'requested');
   const [manualStatus, setManualStatus] = useState<Status | ''>('');
   const [manualNote, setManualNote] = useState('');
   const canClose = r.allowed_transitions.includes('closed');
@@ -428,6 +443,13 @@ function Actions({ r, employeeFirst }: { r: RequestDetail; employeeFirst: string
 
   const chosenManual: Status | undefined =
     manualStatus && manual.includes(manualStatus) ? manualStatus : manual[0];
+  const chosenNext: string | null =
+    nextEmployee && r.alternatives.some((a) => a.employee.id === nextEmployee)
+      ? nextEmployee
+      : (r.alternatives[0]?.employee.id ?? null);
+  const rerouteErr = reroute.error;
+  const rerouteErrorText =
+    rerouteErr instanceof ApiError ? rerouteErr.detail : rerouteErr ? rerouteErr.message : null;
 
   return (
     <div ref={rootRef} className="relative flex items-center gap-2">
@@ -451,6 +473,26 @@ function Actions({ r, employeeFirst }: { r: RequestDetail; employeeFirst: string
           No reply from {r.contact.full_name.split(' ')[0]} in {r.days_waiting} days.
         </span>
       ) : null}
+      {declined ? (
+        <span className="text-[13px] font-medium text-needs-text">
+          {employeeFirst} passed.{' '}
+          {r.alternatives.length > 0
+            ? `${r.alternatives.length} other ${r.alternatives.length === 1 ? 'colleague knows' : 'colleagues know'} ${contactFirst}.`
+            : `No one else at Cognition knows ${contactFirst}.`}
+        </span>
+      ) : null}
+      {declined && r.alternatives.length > 0 ? (
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => setPanel((p) => (p === 'reroute' ? null : 'reroute'))}
+          aria-expanded={panel === 'reroute'}
+          aria-haspopup="dialog"
+          disabled={reroute.isPending}
+        >
+          Ask someone else
+        </Button>
+      ) : null}
       {r.stale ? (
         <Button
           variant="primary"
@@ -472,7 +514,7 @@ function Actions({ r, employeeFirst }: { r: RequestDetail; employeeFirst: string
           Close request
         </Button>
       ) : null}
-      {!r.stale && manual.length > 0 ? (
+      {!r.stale && !declined && manual.length > 0 ? (
         <Button
           variant="ghost"
           size="sm"
@@ -483,6 +525,78 @@ function Actions({ r, employeeFirst }: { r: RequestDetail; employeeFirst: string
           More
         </Button>
       ) : null}
+
+      <Popover
+        open={panel === 'reroute'}
+        onClose={closePanel}
+        rootRef={rootRef}
+        label="Ask someone else"
+        className="w-[400px]"
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            reroute.mutate({ employee_id: chosenNext }, { onSuccess: closePanel });
+          }}
+          className="space-y-2"
+        >
+          <p className="text-[12px] font-medium tracking-normal text-carbon">
+            Who should reach out to {contactFirst} instead?
+          </p>
+          <ul className="max-h-[260px] space-y-1 overflow-y-auto" role="radiogroup">
+            {r.alternatives.map((alt) => {
+              const selected = alt.employee.id === chosenNext;
+              return (
+                <li key={alt.employee.id}>
+                  <label
+                    className={`flex cursor-pointer items-start gap-2 rounded-[8px] px-2 py-1.5 ${
+                      selected ? 'bg-haze' : 'hover:bg-haze/70'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="next-employee"
+                      value={alt.employee.id}
+                      checked={selected}
+                      onChange={() => setNextEmployee(alt.employee.id)}
+                      className="mt-1"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-medium text-ink">
+                        {alt.employee.full_name}
+                        <span className="font-medium text-muted"> · {alt.employee.title}</span>
+                      </span>
+                      {alt.shared_history ? (
+                        <span className="block text-[12px] tracking-normal text-muted">
+                          {alt.shared_history}
+                        </span>
+                      ) : null}
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+          {rerouteErrorText ? (
+            <p role="alert" className="text-[12px] text-no-text">
+              {rerouteErrorText}. Try again.
+            </p>
+          ) : null}
+          <div className="flex items-center gap-2">
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={reroute.isPending || !chosenNext}
+            >
+              {reroute.isPending ? 'Sending' : 'Send request'}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={closePanel}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </Popover>
 
       <Popover
         open={panel === 'close'}
