@@ -4,6 +4,7 @@ import { useRequests, useStats } from '../api/queries';
 import type { Status } from '../api/types';
 import { EmptyState, ErrorState, TableSkeleton } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
+import { Segmented } from '../components/Segmented';
 import { StatusPill } from '../components/StatusPill';
 import { formatCount, formatRelative } from '../lib/format';
 import { STATUS_LABELS, STATUS_ORDER, isStatus } from '../lib/status';
@@ -67,11 +68,13 @@ export function PipelinePage() {
   const selected = useMemo(() => params.getAll('status').filter(isStatus), [params]);
   const activeOnly = params.get('active_only') === '1';
   const roleId = params.get('role_id') ?? undefined;
+  const scope: 'mine' | 'all' = params.get('scope') === 'all' ? 'all' : 'mine';
 
   const requests = useRequests({
     status: selected.length ? selected : undefined,
     active_only: activeOnly || undefined,
     role_id: roleId,
+    mine: scope === 'mine' || undefined,
   });
 
   const rows = useMemo(
@@ -82,11 +85,12 @@ export function PipelinePage() {
     [requests.data],
   );
 
-  const apply = (statuses: Status[], hideClosed: boolean) => {
+  const apply = (statuses: Status[], hideClosed: boolean, nextScope: 'mine' | 'all' = scope) => {
     const next = new URLSearchParams();
     for (const x of statuses) next.append('status', x);
     if (hideClosed) next.set('active_only', '1');
     if (roleId) next.set('role_id', roleId);
+    next.set('scope', nextScope);
     setParams(next, { replace: true });
   };
 
@@ -110,6 +114,15 @@ export function PipelinePage() {
             : ' '
         }
       >
+        <Segmented
+          label="Request scope"
+          value={scope}
+          onChange={(next) => apply(selected, activeOnly, next)}
+          options={[
+            { value: 'mine', label: 'My requests' },
+            { value: 'all', label: 'All requests' },
+          ]}
+        />
         <label className="inline-flex items-center gap-2 text-[12.5px] text-ink-2">
           <input
             type="checkbox"

@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useRoles, useStats } from '../api/queries';
 import type { RoleSummary } from '../api/types';
 import { EmptyState, ErrorState, Skeleton, TableSkeleton } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
+import { Segmented } from '../components/Segmented';
 import { formatCount, plural } from '../lib/format';
 
 function StatsStrip() {
@@ -44,22 +45,45 @@ function groupByDepartment(roles: RoleSummary[]): [string, RoleSummary[]][] {
 export function RolesPage() {
   const roles = useRoles();
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
   const [q, setQ] = useState('');
 
+  const mineCount = useMemo(() => (roles.data ?? []).filter((r) => r.is_mine).length, [roles.data]);
+  const scopeParam = params.get('scope');
+  const scope: 'mine' | 'all' =
+    scopeParam === 'mine' || scopeParam === 'all' ? scopeParam : mineCount > 0 ? 'mine' : 'all';
+  const setScope = (next: 'mine' | 'all') => {
+    const nextParams = new URLSearchParams(params);
+    nextParams.set('scope', next);
+    setParams(nextParams, { replace: true });
+  };
+
   const filtered = useMemo(() => {
-    const list = roles.data ?? [];
+    const list = (roles.data ?? []).filter((r) => scope === 'all' || r.is_mine);
     const needle = q.trim().toLowerCase();
     if (!needle) return list;
     return list.filter((r) =>
       [r.title, r.team, r.location, r.department].some((s) => s.toLowerCase().includes(needle)),
     );
-  }, [roles.data, q]);
+  }, [roles.data, q, scope]);
 
   const groups = useMemo(() => groupByDepartment(filtered), [filtered]);
 
   return (
     <div>
       <PageHeader title="Open roles" subtitle={<StatsStrip />}>
+        <Segmented
+          label="Role scope"
+          value={scope}
+          onChange={setScope}
+          options={[
+            { value: 'mine', label: `My roles${roles.data ? ` · ${String(mineCount)}` : ''}` },
+            {
+              value: 'all',
+              label: `All roles${roles.data ? ` · ${String(roles.data.length)}` : ''}`,
+            },
+          ]}
+        />
         <input
           type="search"
           value={q}
@@ -73,10 +97,24 @@ export function RolesPage() {
       {roles.isPending ? <TableSkeleton rows={10} /> : null}
       {roles.isError ? <ErrorState title="Couldn't load roles" error={roles.error} /> : null}
       {roles.data && filtered.length === 0 ? (
-        <EmptyState title={q ? `No roles match “${q}”` : 'No open roles'}>
-          {q
-            ? 'Try a different word, or clear the search.'
-            : 'Roles sync from the Ashby job board.'}
+        <EmptyState
+          title={
+            q
+              ? `No roles match “${q}”`
+              : scope === 'mine'
+                ? 'No roles assigned to you'
+                : 'No open roles'
+          }
+        >
+          {q ? (
+            'Try a different word, or clear the search.'
+          ) : scope === 'mine' ? (
+            <button type="button" className="link" onClick={() => setScope('all')}>
+              Show all roles
+            </button>
+          ) : (
+            'Roles sync from the Ashby job board.'
+          )}
         </EmptyState>
       ) : null}
 
@@ -88,6 +126,7 @@ export function RolesPage() {
                 <th className="w-[38%]">Role</th>
                 <th>Team</th>
                 <th>Location</th>
+                <th>Owner</th>
                 <th className="num">Strong matches</th>
                 <th className="num">Active requests</th>
               </tr>
@@ -96,7 +135,7 @@ export function RolesPage() {
               <tbody key={dept}>
                 <tr>
                   <th
-                    colSpan={5}
+                    colSpan={6}
                     scope="rowgroup"
                     className="sticky top-[33px] z-[1] bg-ground text-left px-3 py-1.5 text-[12px] font-semibold text-ink-2 border-b border-line"
                   >
@@ -126,6 +165,13 @@ export function RolesPage() {
                       {r.is_remote ? (
                         <span className="ml-1.5 text-muted text-[12px]">Remote</span>
                       ) : null}
+                    </td>
+                    <td className="text-ink-2">
+                      {r.is_mine ? (
+                        <span className="font-medium text-ink">You</span>
+                      ) : (
+                        (r.owner_name ?? <span className="text-faint">Unassigned</span>)
+                      )}
                     </td>
                     <td className="num tnum">
                       {r.strong_match_count > 0 ? (

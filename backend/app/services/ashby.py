@@ -13,7 +13,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import Settings, get_settings
 from app.models import Role
+from app.services.ownership import default_owner
 from app.services.taxonomy import classify_family, classify_seniority, extract_skills
 
 BOARD_URL = "https://api.ashbyhq.com/posting-api/job-board/{board}"
@@ -78,8 +80,11 @@ def fetch_or_snapshot(*, prefer_live: bool) -> tuple[list[AshbyPosting], str]:
     return load_snapshot(), "snapshot"
 
 
-def sync_roles(db: Session, postings: list[AshbyPosting], *, source: str) -> SyncResult:
+def sync_roles(
+    db: Session, postings: list[AshbyPosting], *, source: str, settings: Settings | None = None
+) -> SyncResult:
     """Upsert roles by Ashby id and deactivate anything no longer on the board."""
+    settings = settings or get_settings()
     existing = {r.ashby_id: r for r in db.scalars(select(Role)).all()}
     seen: set[str] = set()
     created = updated = 0
@@ -114,6 +119,8 @@ def sync_roles(db: Session, postings: list[AshbyPosting], *, source: str) -> Syn
             role.required_skills = extract_skills(
                 f"{p.title}. {p.description_plain}", family=family
             )
+        if not role.owner_email:
+            role.owner_name, role.owner_email = default_owner(p.department, settings)
     deactivated = 0
     for ashby_id, role in existing.items():
         if ashby_id not in seen and role.is_active:

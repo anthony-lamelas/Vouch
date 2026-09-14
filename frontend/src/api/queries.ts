@@ -83,6 +83,7 @@ export interface RequestListParams {
   status?: Status[];
   role_id?: string;
   active_only?: boolean;
+  mine?: boolean;
 }
 
 export function useRequests(params: RequestListParams) {
@@ -93,6 +94,7 @@ export function useRequests(params: RequestListParams) {
         status: params.status,
         role_id: params.role_id,
         active_only: params.active_only,
+        mine: params.mine,
         limit: 200,
       }),
     placeholderData: (prev) => prev,

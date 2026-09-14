@@ -47,17 +47,24 @@ def _counts(db: DB) -> tuple[dict[uuid.UUID, int], dict[uuid.UUID, int]]:
 
 @router.get("", response_model=list[RoleSummary])
 def list_roles(
-    db: DB, _: User, department: str | None = None, q: str | None = None
+    db: DB,
+    user: User,
+    department: str | None = None,
+    q: str | None = None,
+    mine: bool = False,
 ) -> list[RoleSummary]:
     stmt = select(Role).where(Role.is_active.is_(True)).order_by(Role.department, Role.title)
     if department:
         stmt = stmt.where(Role.department == department)
     if q:
         stmt = stmt.where(Role.title.ilike(f"%{q}%"))
+    if mine:
+        stmt = stmt.where(Role.owner_email == user.email)
     strong, active = _counts(db)
     out: list[RoleSummary] = []
     for role in db.scalars(stmt).all():
         summary = RoleSummary.model_validate(role)
+        summary.is_mine = role.owner_email == user.email
         summary.strong_match_count = strong.get(role.id, 0)
         summary.active_request_count = active.get(role.id, 0)
         out.append(summary)
@@ -65,12 +72,13 @@ def list_roles(
 
 
 @router.get("/{role_id}", response_model=RoleDetail)
-def get_role(role_id: uuid.UUID, db: DB, _: User) -> RoleDetail:
+def get_role(role_id: uuid.UUID, db: DB, user: User) -> RoleDetail:
     role = db.get(Role, role_id)
     if role is None:
         raise HTTPException(status_code=404, detail="Role not found")
     strong, active = _counts(db)
     detail = RoleDetail.model_validate(role)
+    detail.is_mine = role.owner_email == user.email
     detail.strong_match_count = strong.get(role.id, 0)
     detail.active_request_count = active.get(role.id, 0)
     return detail

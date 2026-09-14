@@ -41,6 +41,23 @@ def test_roles_come_from_snapshot(client: TestClient) -> None:
     assert "Software Engineer, Infrastructure" in titles
 
 
+def test_role_ownership_and_mine_filters(client: TestClient) -> None:
+    all_roles = client.get("/api/roles").json()
+    assert all(r["owner_email"] and r["owner_name"] for r in all_roles)
+    mine = client.get("/api/roles", params={"mine": True}).json()
+    assert mine and all(r["is_mine"] for r in mine)
+    assert {r["department"] for r in mine} == {"Research & Development", "Customer Engineering"}
+    assert len(mine) < len(all_roles)
+    others = [r for r in all_roles if not r["is_mine"]]
+    assert {r["owner_name"] for r in others} >= {"Dana Whitfield", "Chris Nakamura"}
+
+    my_requests = client.get("/api/requests", params={"mine": True}).json()
+    assert my_requests["total"] >= 1
+    assert all(item["is_mine"] for item in my_requests["items"])
+    everything = client.get("/api/requests").json()
+    assert everything["total"] > my_requests["total"]
+
+
 def test_candidates_ranked_with_reasons(client: TestClient) -> None:
     role = _first_role(client)
     page = client.get(f"/api/roles/{role['id']}/candidates", params={"limit": 10}).json()

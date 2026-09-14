@@ -4,11 +4,11 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 
 from app.api.deps import DB, Referrals, User
 from app.api.serializers import REQUEST_LOAD_OPTIONS, request_detail, request_summary
-from app.models import ReferralRequest
+from app.models import ReferralRequest, Role
 from app.schemas import CreateRequestIn, RequestDetail, RequestPage, TransitionIn
 from app.services.lifecycle import RECRUITER_SETTABLE, IllegalTransitionError, Status
 from app.services.referrals import ActiveRequestExistsError, NoConnectionError, NotFoundError
@@ -19,13 +19,18 @@ router = APIRouter(prefix="/requests", tags=["requests"])
 @router.get("", response_model=RequestPage)
 def list_requests(
     db: DB,
-    _: User,
+    user: User,
     status: Annotated[list[Status] | None, Query()] = None,
     role_id: uuid.UUID | None = None,
     active_only: bool = False,
+    mine: bool = False,
     limit: Annotated[int, Query(ge=1, le=200)] = 100,
 ) -> RequestPage:
     stmt = select(ReferralRequest).options(*REQUEST_LOAD_OPTIONS)
+    if mine:
+        stmt = stmt.join(Role, Role.id == ReferralRequest.role_id).where(
+            or_(ReferralRequest.requested_by == user.email, Role.owner_email == user.email)
+        )
     if status:
         stmt = stmt.where(ReferralRequest.status.in_([s.value for s in status]))
     if active_only:
@@ -34,7 +39,12 @@ def list_requests(
         stmt = stmt.where(ReferralRequest.role_id == role_id)
     total = db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
     rows = db.scalars(stmt.order_by(ReferralRequest.updated_at.desc()).limit(limit)).all()
-    return RequestPage(items=[request_summary(r) for r in rows], total=total)
+    items = []
+    for r in rows:
+        summary = request_summary(r)
+        summary.is_mine = r.requested_by == user.email or r.role.owner_email == user.email
+        items.append(summary)
+    return RequestPage(items=items, total=total)
 
 
 @router.post("", response_model=RequestDetail, status_code=201)

@@ -131,6 +131,9 @@ export interface RoleSummary {
   required_skills: string[];
   published_at: string | null;
   job_url: string;
+  owner_email: string | null;
+  owner_name: string | null;
+  is_mine: boolean;
   strong_match_count: number;
   active_request_count: number;
 }
@@ -146,6 +149,8 @@ export interface RoleBrief {
   team: string;
   department: string;
   location: string;
+  owner_email: string | null;
+  owner_name: string | null;
 }
 
 export interface EventOut {
@@ -182,6 +187,7 @@ export interface RequestSummary {
   last_event_at: string | null;
   days_waiting: number | null;
   stale: boolean;
+  is_mine: boolean;
 }
 
 export interface RequestDetail extends RequestSummary {
