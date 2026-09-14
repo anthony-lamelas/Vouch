@@ -132,14 +132,15 @@ def test_ask_draft_is_concise_and_signed() -> None:
     )
     text = draft_ask(ctx)
     assert text.startswith("Hi Frank, would you be willing to reach out to Kelly Brooks")
-    assert "AI Support Engineer" in text and " You both worked at DoorDash. " in text
+    assert "AI Support Engineer" in text
+    assert " You both worked at DoorDash, so you seemed like the right person to ask. " in text
     assert text.endswith("Thanks,\nAnthony")
-    assert len(text) < 360
+    assert len(text) < 400
 
     from dataclasses import replace
 
     school = draft_ask(replace(ctx, shared_company=None, shared_school="NYU"))
-    assert " You both went to NYU. " in school
+    assert " You both went to NYU, so you seemed like the right person to ask. " in school
     plain = draft_ask(replace(ctx, shared_history=None, shared_company=None))
     assert "You both" not in plain and "right person" not in plain
     assert "role? If you're up for it" in plain
