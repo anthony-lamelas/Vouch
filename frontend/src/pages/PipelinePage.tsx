@@ -1,71 +1,25 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRequests } from '../api/queries';
 import type { RequestSummary, Status } from '../api/types';
+import { Button } from '../components/Button';
 import { RemovableChip } from '../components/Chip';
 import { EmptyState, ErrorState, TableSkeleton } from '../components/EmptyState';
-import { GroupBand } from '../components/GroupBand';
+import { MultiSelect, type Option } from '../components/MultiSelect';
 import { PageHeader } from '../components/PageHeader';
 import { StatusPill } from '../components/StatusPill';
 import { Tabs } from '../components/Tabs';
-import { BAND, type BandTone } from '../lib/bands';
-import { formatRelative } from '../lib/format';
-import {
-  GROUP_ORDER,
-  GROUP_TITLES,
-  groupKeyFor,
-  groupRequests,
-  type GroupKey,
-} from '../lib/pipelineGroups';
-import { STATUS_LABELS, isStatus } from '../lib/status';
+import { formatCount, formatRelative } from '../lib/format';
+import { STATUS_LABELS, STATUS_ORDER, isStatus } from '../lib/status';
 
-const GROUP_TONE: Record<GroupKey, BandTone> = {
-  needs_you: 'needs',
-  waiting: 'wait',
-  reached_out: 'reach',
-  answered: 'no',
-  closed: 'closed',
-};
+/** The six statuses in lifecycle order. */
+const STATUS_OPTIONS: Option[] = STATUS_ORDER.map((s) => ({
+  value: s,
+  label: STATUS_LABELS[s],
+}));
 
-const bandId = (key: GroupKey) => `stage-${key}`;
-
-/** One soft tag per stage with its count; clicking scrolls to the band, it never filters. */
-function StageStrip({ items }: { items: RequestSummary[] }) {
-  const counts = useMemo(() => {
-    const c = new Map<GroupKey, number>();
-    for (const r of items) c.set(groupKeyFor(r), (c.get(groupKeyFor(r)) ?? 0) + 1);
-    return c;
-  }, [items]);
-  return (
-    <div className="mt-3 flex flex-wrap items-center gap-1.5" aria-label="Stages">
-      {GROUP_ORDER.map((key) => {
-        const n = counts.get(key) ?? 0;
-        const cls = BAND[GROUP_TONE[key]];
-        return (
-          <button
-            key={key}
-            type="button"
-            onClick={() => {
-              const el = document.getElementById(bandId(key));
-              if (el && typeof el.scrollIntoView === 'function') {
-                el.scrollIntoView({ block: 'start', behavior: 'smooth' });
-              }
-            }}
-            className={`inline-flex h-[22px] items-center gap-1.5 rounded-tag px-2 text-[12px] font-medium tracking-normal transition-opacity hover:opacity-80 ${
-              n > 0 ? cls.row : 'bg-haze text-caption'
-            }`}
-          >
-            <span
-              aria-hidden
-              className={`size-1.5 rounded-full ${n > 0 ? cls.dot : 'bg-caption'}`}
-            />
-            {GROUP_TITLES[key]}
-            <span className="tnum">{n}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
+function activityAt(r: RequestSummary): number {
+  return new Date(r.last_event_at ?? r.updated_at).getTime();
 }
 
 export function PipelinePage() {
@@ -75,6 +29,7 @@ export function PipelinePage() {
   const activeOnly = params.get('active_only') === '1';
   const roleId = params.get('role_id') ?? undefined;
   const scope: 'mine' | 'all' = params.get('scope') === 'all' ? 'all' : 'mine';
+  const [q, setQ] = useState('');
 
   const requests = useRequests({
     status: selected.length ? selected : undefined,
@@ -83,12 +38,19 @@ export function PipelinePage() {
     mine: scope === 'mine' || undefined,
   });
 
-  const items = requests.data?.items;
-  const groups = useMemo(
-    () => groupRequests(items ?? [], { hideClosed: activeOnly }),
-    [items, activeOnly],
-  );
-  const shown = groups.reduce((n, g) => n + g.items.length, 0);
+  // One flat list, newest activity first; the search narrows it client-side.
+  const rows = useMemo(() => {
+    const items = requests.data?.items ?? [];
+    const needle = q.trim().toLowerCase();
+    const list = needle
+      ? items.filter((r) =>
+          [r.contact.full_name, r.role.title, r.employee.full_name].some((s) =>
+            s.toLowerCase().includes(needle),
+          ),
+        )
+      : items;
+    return [...list].sort((a, b) => activityAt(b) - activityAt(a));
+  }, [requests.data, q]);
 
   const apply = (next: {
     statuses?: Status[];
@@ -136,38 +98,68 @@ export function PipelinePage() {
         </label>
       </PageHeader>
 
-      {items ? <StageStrip items={items} /> : null}
-
-      {filtered ? (
-        <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[12px] text-muted">
-          <span>Filtered</span>
-          {selected.map((s) => (
-            <RemovableChip
-              key={s}
-              label={STATUS_LABELS[s]}
-              onRemove={() => apply({ statuses: selected.filter((x) => x !== s) })}
-            />
-          ))}
-          {roleId ? (
-            <RemovableChip label="One role" onRemove={() => apply({ roleId: undefined })} />
-          ) : null}
-        </div>
-      ) : null}
+      <div className="mt-3 flex flex-wrap items-center gap-2" aria-label="Request filters">
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search candidate, role or employee"
+          aria-label="Search requests"
+          className="field h-8 w-[240px] text-[13px]"
+        />
+        <MultiSelect
+          label="Status"
+          options={STATUS_OPTIONS}
+          selected={selected}
+          onChange={(values) => apply({ statuses: values.filter(isStatus) })}
+        />
+        {filtered ? (
+          <>
+            <span aria-hidden className="mx-1 h-4 w-px bg-line" />
+            {selected.map((s) => (
+              <RemovableChip
+                key={s}
+                label={STATUS_LABELS[s]}
+                onRemove={() => apply({ statuses: selected.filter((x) => x !== s) })}
+              />
+            ))}
+            {roleId ? (
+              <RemovableChip label="One role" onRemove={() => apply({ roleId: undefined })} />
+            ) : null}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-[12px]"
+              onClick={() => apply({ statuses: [], roleId: undefined })}
+            >
+              Clear all
+            </Button>
+          </>
+        ) : null}
+        <p className="ml-auto text-[12px] text-muted tnum" aria-live="polite">
+          {requests.data
+            ? `${formatCount(rows.length)} ${rows.length === 1 ? 'request' : 'requests'}`
+            : ' '}
+        </p>
+      </div>
 
       <div className="mt-3">
         {requests.isPending ? <TableSkeleton rows={6} cols={5} /> : null}
         {requests.isError ? (
           <ErrorState title="Couldn't load requests" error={requests.error} />
         ) : null}
-        {requests.data && shown === 0 ? (
+        {requests.data && rows.length === 0 ? (
           <EmptyState>
-            {filtered || activeOnly ? (
+            {filtered || activeOnly || q ? (
               <>
                 Nothing matches these filters.{' '}
                 <button
                   type="button"
                   className="link"
-                  onClick={() => apply({ statuses: [], hideClosed: false, roleId: undefined })}
+                  onClick={() => {
+                    setQ('');
+                    apply({ statuses: [], hideClosed: false, roleId: undefined });
+                  }}
                 >
                   Show all requests
                 </button>
@@ -184,7 +176,7 @@ export function PipelinePage() {
           </EmptyState>
         ) : null}
 
-        {shown > 0 ? (
+        {rows.length > 0 ? (
           <table className="data-table data-table-calm">
             <thead>
               <tr>
@@ -195,21 +187,11 @@ export function PipelinePage() {
                 <th className="num">Last activity</th>
               </tr>
             </thead>
-            {groups.map((g) => (
-              <tbody key={g.key} aria-label={g.title}>
-                <GroupBand
-                  id={bandId(g.key)}
-                  size="sm"
-                  title={g.title}
-                  count={g.items.length}
-                  colSpan={5}
-                  tone={GROUP_TONE[g.key]}
-                />
-                {g.items.map((r) => (
-                  <RequestRow key={r.id} r={r} onOpen={() => open(r.id)} />
-                ))}
-              </tbody>
-            ))}
+            <tbody>
+              {rows.map((r) => (
+                <RequestRow key={r.id} r={r} onOpen={() => open(r.id)} />
+              ))}
+            </tbody>
           </table>
         ) : null}
       </div>

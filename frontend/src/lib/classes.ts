@@ -3,6 +3,17 @@
  * of the component files so those export only components (fast refresh).
  */
 
+import type { Tone } from './status';
+
+/** Soft-tag background + text per semantic tone (docs/design/attio-style.md). No dot. */
+export const TONE_CLASS: Record<Tone, string> = {
+  neutral: 'bg-closed-bg text-closed-text',
+  warning: 'bg-wait-bg text-wait-text',
+  info: 'bg-reach-bg text-reach-text',
+  positive: 'bg-yes-bg text-yes-text',
+  negative: 'bg-no-bg text-no-text',
+};
+
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md';
 
