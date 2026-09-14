@@ -18,19 +18,25 @@ export function Pagination({
   const from = offset + 1;
   const to = Math.min(offset + limit, total);
   return (
-    <div className="flex items-center justify-between gap-4 py-3 text-[13.5px] text-muted tnum">
+    <div className="flex items-center justify-between gap-4 py-2.5 text-[12px] text-muted tnum">
       <span>
         {formatCount(from)}–{formatCount(to)} of {formatCount(total)} {noun}
       </span>
       <div className="flex items-center gap-1.5">
         <Button
           size="sm"
+          className="h-7 px-2.5 text-[12px]"
           disabled={offset === 0}
           onClick={() => onPage(Math.max(0, offset - limit))}
         >
           Previous
         </Button>
-        <Button size="sm" disabled={to >= total} onClick={() => onPage(offset + limit)}>
+        <Button
+          size="sm"
+          className="h-7 px-2.5 text-[12px]"
+          disabled={to >= total}
+          onClick={() => onPage(offset + limit)}
+        >
           Next
         </Button>
       </div>

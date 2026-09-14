@@ -1,8 +1,8 @@
 export function Wordmark({ size = 'sm' }: { size?: 'sm' | 'lg' }) {
-  const cls = size === 'lg' ? 'text-[30px]' : 'text-[18px]';
+  const cls = size === 'lg' ? 'text-[20px]' : 'text-[15px]';
   return (
     <span
-      className={`font-serif italic font-normal leading-none tracking-[0.01em] text-ink select-none ${cls}`}
+      className={`font-semibold leading-none tracking-[-0.01em] text-ink select-none ${cls}`}
       aria-label="VOUCH"
     >
       VOUCH

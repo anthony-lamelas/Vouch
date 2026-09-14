@@ -75,7 +75,8 @@ describe('PipelinePage', () => {
     expect(names[0]).toContain('Jill James');
     expect(names[1]).toContain('Terry Glover');
     expect(within(needsYou).getByText('No reply · 10d')).toBeInTheDocument();
-    expect(within(needsYou).getByRole('img', { name: 'Delivered' })).toBeInTheDocument();
+    // The message excerpt is no longer a column; the request page owns the conversation.
+    expect(screen.queryByText(/Feels like ages since Stripe/)).toBeNull();
 
     const closed = screen.getByRole('rowgroup', { name: /Closed/ });
     expect(within(closed).getByText('Kim Morrow')).toBeInTheDocument();

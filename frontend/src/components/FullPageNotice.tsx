@@ -11,13 +11,13 @@ export function FullPageNotice({
   muted?: boolean;
 }) {
   return (
-    <div className="grid min-h-screen place-items-center bg-canvas px-6">
-      <div className="w-full max-w-[360px] text-center">
+    <div className="grid min-h-screen place-items-center bg-paper px-6">
+      <div className="w-full max-w-[360px] rounded-card border border-line bg-canvas p-6 text-center shadow-card">
         <Wordmark size="lg" />
-        <p className={`mt-4 text-[16px] font-medium ${muted ? 'text-muted' : 'text-ink'}`}>
+        <p className={`mt-3 text-[14px] font-medium ${muted ? 'text-muted' : 'text-ink'}`}>
           {title}
         </p>
-        {children ? <p className="mt-1 text-ink-2">{children}</p> : null}
+        {children ? <p className="mt-1 text-[13px] text-muted">{children}</p> : null}
       </div>
     </div>
   );

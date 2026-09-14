@@ -1,4 +1,5 @@
 import { useId, useState, type ReactNode } from 'react';
+import { ChevronIcon } from './Icons';
 
 export function Disclosure({
   summary,
@@ -20,21 +21,16 @@ export function Disclosure({
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 rounded-[2px] text-[14px] font-medium text-ink-2 hover:text-ink"
+        className="inline-flex items-center gap-1.5 rounded-[4px] text-[13px] font-semibold text-ink hover:text-cobalt"
       >
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 10 10"
-          aria-hidden
-          className={`transition-transform ${open ? 'rotate-90' : ''}`}
-        >
-          <path d="M3 1.5L7 5l-4 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
+        <ChevronIcon
+          size={10}
+          className={`text-caption transition-transform ${open ? 'rotate-90' : ''}`}
+        />
         {summary}
       </button>
       {open ? (
-        <div id={id} className="mt-2.5">
+        <div id={id} className="mt-2">
           {children}
         </div>
       ) : null}

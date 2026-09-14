@@ -1,20 +1,9 @@
 import type { ReactNode } from 'react';
 
-export function EmptyState({
-  title,
-  children,
-  action,
-}: {
-  title: string;
-  children?: ReactNode;
-  action?: ReactNode;
-}) {
+/** One quiet line, with any action inline as a link. */
+export function EmptyState({ children }: { children: ReactNode }) {
   return (
-    <div className="border-y border-line bg-surface px-6 py-12 text-center">
-      <p className="text-[15px] font-medium text-ink">{title}</p>
-      {children ? <p className="mx-auto mt-1 max-w-[48ch] text-ink-2">{children}</p> : null}
-      {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
-    </div>
+    <div className="border-b border-line py-6 text-center text-[13px] text-muted">{children}</div>
   );
 }
 
@@ -29,9 +18,9 @@ export function ErrorState({
 }) {
   const message = error instanceof Error ? error.message : String(error);
   return (
-    <div role="alert" className="my-4 rounded-control bg-neg-soft px-4 py-3 text-neg">
-      <p className="font-medium">{title}</p>
-      <p className="mt-0.5 text-[13.5px]">
+    <div role="alert" className="my-4 rounded-card bg-no-bg px-4 py-3 text-[13px] text-no-text">
+      <p className="font-semibold">{title}</p>
+      <p className="mt-0.5">
         {message}. {hint}
       </p>
     </div>
@@ -39,7 +28,7 @@ export function ErrorState({
 }
 
 export function Skeleton({ className = '' }: { className?: string }) {
-  return <div aria-hidden className={`animate-pulse rounded-[3px] bg-neutral-soft ${className}`} />;
+  return <div aria-hidden className={`animate-pulse rounded-[4px] bg-haze ${className}`} />;
 }
 
 export function TableSkeleton({ rows = 8, cols = 5 }: { rows?: number; cols?: number }) {
@@ -47,12 +36,12 @@ export function TableSkeleton({ rows = 8, cols = 5 }: { rows?: number; cols?: nu
     <div
       aria-busy="true"
       aria-label="Loading"
-      className="divide-y divide-line border-y border-line bg-surface"
+      className="divide-y divide-line border-b border-line"
     >
       {Array.from({ length: rows }).map((_, r) => (
-        <div key={r} className="flex gap-4 px-3 py-3.5">
+        <div key={r} className="flex h-9 items-center gap-4 px-3">
           {Array.from({ length: cols }).map((__, c) => (
-            <Skeleton key={c} className={`h-3.5 ${c === 0 ? 'w-[28%]' : 'w-[14%]'}`} />
+            <Skeleton key={c} className={`h-3 ${c === 0 ? 'w-[28%]' : 'w-[14%]'}`} />
           ))}
         </div>
       ))}

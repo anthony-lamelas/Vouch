@@ -66,3 +66,48 @@ export function computeNeedsYou(requests: RequestSummary[]): NeedsYouItem[] {
 
   return items;
 }
+
+/** How many requests sit in the pipeline's "Needs you" group: silence or a yes. */
+export function needsYouCount(requests: RequestSummary[]): number {
+  return requests.filter(
+    (r) => r.status !== 'closed' && (r.stale || r.status === 'candidate_interested'),
+  ).length;
+}
+
+export interface SidebarItem {
+  key: string;
+  label: string;
+  to: string;
+}
+
+/**
+ * Short, per-request links for the sidebar: "Close Victoria's request", "Nudge Bob about
+ * Jill", then one aggregate "n asks waiting". Capped so the sidebar stays a sidebar.
+ */
+export function sidebarNeedsYou(requests: RequestSummary[], max = 3): SidebarItem[] {
+  const active = requests.filter((r) => r.status !== 'closed');
+  const items: SidebarItem[] = [];
+  for (const r of active.filter((x) => x.status === 'candidate_interested')) {
+    items.push({
+      key: `close:${r.id}`,
+      label: `Close ${firstName(r.contact.full_name)}'s request`,
+      to: `/requests/${r.id}`,
+    });
+  }
+  for (const r of active.filter((x) => x.stale)) {
+    items.push({
+      key: `nudge:${r.id}`,
+      label: `Nudge ${firstName(r.employee.full_name)} about ${firstName(r.contact.full_name)}`,
+      to: `/requests/${r.id}`,
+    });
+  }
+  const waiting = active.filter((r) => r.status === 'requested' && !r.stale).length;
+  if (waiting > 0) {
+    items.push({
+      key: 'waiting',
+      label: waiting === 1 ? '1 ask waiting' : `${waiting} asks waiting`,
+      to: '/pipeline?scope=mine&status=requested',
+    });
+  }
+  return items.slice(0, max);
+}

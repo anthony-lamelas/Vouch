@@ -2,29 +2,28 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRequests, useRoles } from '../api/queries';
 import type { RoleSummary } from '../api/types';
-import { Button } from '../components/Button';
 import { EmptyState, ErrorState, TableSkeleton } from '../components/EmptyState';
+import { GroupBand } from '../components/GroupBand';
 import { PageHeader } from '../components/PageHeader';
-import { Segmented } from '../components/Segmented';
-import { plural } from '../lib/format';
+import { Tabs } from '../components/Tabs';
+import { formatCount } from '../lib/format';
 import { computeNeedsYou } from '../lib/needsYou';
 
+/** Compact band: 3px amber rule, one 32px line per item, cobalt links. */
 function NeedsYou() {
   const mine = useRequests({ mine: true, active_only: true });
   const items = useMemo(() => computeNeedsYou(mine.data?.items ?? []), [mine.data]);
   if (items.length === 0) return null;
   return (
     <section
-      aria-labelledby="needs-you"
-      className="mb-6 border-l-2 border-ochre bg-ochre-soft px-4 py-3"
+      aria-label="Needs you"
+      className="mt-4 flex rounded-r-[8px] border-l-[3px] border-needs-rule bg-needs-bg text-[13px] font-medium text-needs-text"
     >
-      <h2 id="needs-you" className="text-[14px] font-semibold text-ochre">
-        Needs you
-      </h2>
-      <ul className="mt-1 space-y-0.5 text-[14px] text-ink">
+      <span className="flex h-8 shrink-0 items-center pl-3 pr-4 font-semibold">Needs you</span>
+      <ul className="flex min-w-0 flex-1 flex-wrap items-center gap-x-6 pr-3">
         {items.map((item) => (
-          <li key={item.key}>
-            {item.lead}{' '}
+          <li key={item.key} className="flex h-8 items-center whitespace-nowrap">
+            {item.lead}&nbsp;
             <Link to={item.to} className="link">
               {item.action}
             </Link>
@@ -75,59 +74,62 @@ export function RolesPage() {
 
   return (
     <div>
-      <NeedsYou />
-      <PageHeader title="Roles">
-        <Segmented
-          label="Role scope"
-          value={scope}
-          onChange={setScope}
-          options={[
-            { value: 'mine', label: `My roles${roles.data ? ` · ${String(mineCount)}` : ''}` },
-            {
-              value: 'all',
-              label: `All roles${roles.data ? ` · ${String(roles.data.length)}` : ''}`,
-            },
-          ]}
-        />
+      <PageHeader
+        title="Roles"
+        tabs={
+          <Tabs
+            label="Role scope"
+            value={scope}
+            onChange={setScope}
+            options={[
+              { value: 'mine', label: 'My roles', count: roles.data ? mineCount : undefined },
+              { value: 'all', label: 'All roles', count: roles.data?.length },
+            ]}
+          />
+        }
+      >
         <input
           type="search"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search roles"
           aria-label="Search roles"
-          className="field w-[260px]"
+          className="field h-8 w-[240px] text-[13px]"
         />
       </PageHeader>
 
-      {roles.isPending ? <TableSkeleton rows={10} /> : null}
-      {roles.isError ? <ErrorState title="Couldn't load roles" error={roles.error} /> : null}
-      {roles.data && filtered.length === 0 ? (
-        <EmptyState
-          title={
-            q
-              ? `No roles match “${q}”`
-              : scope === 'mine'
-                ? 'No roles are assigned to you.'
-                : 'No open roles'
-          }
-          action={
-            q ? (
-              <Button onClick={() => setQ('')}>Clear the search</Button>
-            ) : scope === 'mine' ? (
-              <Button onClick={() => setScope('all')}>Show all roles</Button>
-            ) : undefined
-          }
-        >
-          {q ? 'Try a different word.' : scope === 'mine' ? null : 'Roles sync from Ashby.'}
-        </EmptyState>
-      ) : null}
+      <NeedsYou />
 
-      {groups.length > 0 ? (
-        <div className="border-y border-line bg-surface">
+      <div className="mt-4">
+        {roles.isPending ? <TableSkeleton rows={10} cols={6} /> : null}
+        {roles.isError ? <ErrorState title="Couldn't load roles" error={roles.error} /> : null}
+        {roles.data && filtered.length === 0 ? (
+          <EmptyState>
+            {q ? (
+              <>
+                No roles match “{q}”.{' '}
+                <button type="button" className="link" onClick={() => setQ('')}>
+                  Clear the search
+                </button>
+              </>
+            ) : scope === 'mine' ? (
+              <>
+                No roles are assigned to you.{' '}
+                <button type="button" className="link" onClick={() => setScope('all')}>
+                  Show all roles
+                </button>
+              </>
+            ) : (
+              'No open roles. Roles sync from Ashby.'
+            )}
+          </EmptyState>
+        ) : null}
+
+        {groups.length > 0 ? (
           <table className="data-table">
             <thead>
               <tr>
-                <th className="w-[36%]">Role</th>
+                <th className="w-[34%]">Role</th>
                 <th>Team</th>
                 <th>Location</th>
                 <th>Owner</th>
@@ -137,14 +139,7 @@ export function RolesPage() {
             </thead>
             {groups.map(([dept, list]) => (
               <tbody key={dept} aria-label={dept}>
-                <tr>
-                  <th colSpan={6} scope="rowgroup" className="group">
-                    {dept}
-                    <span className="ml-2 text-[14px] font-normal text-muted tnum">
-                      {list.length}
-                    </span>
-                  </th>
-                </tr>
+                <GroupBand title={dept} count={list.length} colSpan={6} />
                 {list.map((r) => (
                   <tr
                     key={r.id}
@@ -158,31 +153,33 @@ export function RolesPage() {
                       }
                     }}
                   >
-                    <td>
-                      <span className="name">{r.title}</span>
-                    </td>
-                    <td className="text-ink-2">{r.team}</td>
-                    <td className="text-ink-2">
+                    <td className="font-medium text-ink">{r.title}</td>
+                    <td className="text-carbon">{r.team}</td>
+                    <td className="text-carbon">
                       {r.location}
-                      {r.is_remote ? <span className="ml-1.5 text-muted">Remote</span> : null}
+                      {r.is_remote ? <span className="ml-1.5 text-caption">Remote</span> : null}
                     </td>
-                    <td className="text-ink-2">
-                      {r.is_mine ? 'you' : (r.owner_name ?? <span className="text-muted">—</span>)}
-                    </td>
-                    <td className="num tnum text-ink-2">
-                      {r.strong_match_count > 0 ? (
-                        plural(r.strong_match_count, 'strong match', 'strong matches')
+                    <td className="text-carbon">
+                      {r.is_mine ? (
+                        <span className="text-cobalt">You</span>
                       ) : (
-                        <span className="text-muted">none yet</span>
+                        (r.owner_name ?? <span className="text-caption">—</span>)
+                      )}
+                    </td>
+                    <td className="num text-carbon tnum">
+                      {r.strong_match_count > 0 ? (
+                        `${formatCount(r.strong_match_count)} ${
+                          r.strong_match_count === 1 ? 'match' : 'matches'
+                        }`
+                      ) : (
+                        <span className="text-caption">none yet</span>
                       )}
                     </td>
                     <td className="num tnum">
                       {r.active_request_count > 0 ? (
-                        <span className="font-medium text-spruce-ink">
-                          {r.active_request_count}
-                        </span>
+                        <span className="text-cobalt">{r.active_request_count}</span>
                       ) : (
-                        <span className="text-muted">0</span>
+                        <span className="text-caption">0</span>
                       )}
                     </td>
                   </tr>
@@ -190,8 +187,8 @@ export function RolesPage() {
               </tbody>
             ))}
           </table>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 }

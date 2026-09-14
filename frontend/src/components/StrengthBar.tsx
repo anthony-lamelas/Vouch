@@ -23,12 +23,12 @@ export function StrengthBar({
       aria-valuemax={100}
       aria-valuenow={pct}
       aria-valuetext={`${pct}%`}
-      className={`inline-block h-[3px] shrink-0 overflow-hidden rounded-[1px] bg-line align-middle ${className}`}
+      className={`inline-block h-[4px] shrink-0 overflow-hidden rounded-[2px] bg-line align-middle ${className}`}
       style={{ width }}
     >
       <span
         data-testid="strength-fill"
-        className="block h-full bg-spruce"
+        className="block h-full rounded-[2px] bg-cobalt"
         style={{ width: `${clamped * 100}%` }}
       />
     </span>

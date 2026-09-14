@@ -1,4 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { filterPillClass } from '../lib/classes';
+import { PlusIcon } from './Icons';
 import { TierBadge } from './TierBadge';
 
 export interface Option {
@@ -6,10 +8,7 @@ export interface Option {
   tier?: number;
 }
 
-/**
- * An add-button ("+ Company") that opens a searchable checkbox list. Applied values are shown
- * elsewhere as removable chips, so the trigger itself stays quiet.
- */
+/** Linear-style filter pill: "+ Company" that opens a searchable checkbox list. */
 export function MultiSelect({
   label,
   options,
@@ -72,26 +71,20 @@ export function MultiSelect({
         aria-controls={listId}
         aria-label={`Add ${lower} filter`}
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex h-8 items-center gap-1 rounded-control border px-2.5 text-[14px] transition-colors ${
-          open
-            ? 'border-spruce text-spruce-ink'
-            : 'border-line-strong text-ink-2 hover:border-ink-2 hover:text-ink'
-        }`}
+        className={filterPillClass(open)}
       >
-        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
-          <path d="M5 1v8M1 5h8" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
+        <PlusIcon size={10} />
         {label}
       </button>
       {open ? (
-        <div className="absolute left-0 top-[calc(100%+4px)] z-30 w-[280px] rounded-control border border-line-strong bg-surface">
-          <div className="border-b border-line p-2">
+        <div className="absolute left-0 top-[calc(100%+4px)] z-30 w-[260px] overflow-hidden rounded-card border border-line bg-canvas shadow-pop">
+          <div className="border-b border-line p-1.5">
             <input
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={placeholder}
-              className="field h-7 w-full text-[13.5px]"
+              className="field h-7 w-full rounded-[7px] text-[13px]"
               aria-label={`Search ${lower}`}
             />
           </div>
@@ -99,21 +92,21 @@ export function MultiSelect({
             id={listId}
             role="listbox"
             aria-multiselectable
-            className="max-h-[280px] overflow-auto py-1"
+            className="max-h-[260px] overflow-auto py-1"
           >
             {visible.length === 0 ? (
-              <li className="px-3 py-2 text-[13.5px] text-muted">No matches</li>
+              <li className="px-3 py-1.5 text-[13px] text-muted">No matches</li>
             ) : (
               visible.map((o) => {
                 const checked = selected.includes(o.value);
                 return (
                   <li key={o.value} role="option" aria-selected={checked}>
-                    <label className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[13.5px] hover:bg-canvas">
+                    <label className="flex h-7 cursor-pointer items-center gap-2 px-2.5 text-[13px] hover:bg-haze">
                       <input
                         type="checkbox"
                         checked={checked}
                         onChange={() => toggle(o.value)}
-                        className="accent-spruce"
+                        className="accent-cobalt"
                       />
                       <span className="flex-1 truncate">{o.value}</span>
                       {o.tier !== undefined ? <TierBadge tier={o.tier} /> : null}

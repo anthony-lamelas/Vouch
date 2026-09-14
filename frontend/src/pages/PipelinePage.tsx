@@ -2,16 +2,23 @@ import { useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRequests } from '../api/queries';
 import type { RequestSummary, Status } from '../api/types';
-import { Button } from '../components/Button';
 import { RemovableChip } from '../components/Chip';
-import { DeliveryCheck } from '../components/DeliveryMark';
 import { EmptyState, ErrorState, TableSkeleton } from '../components/EmptyState';
+import { GroupBand, type BandTone } from '../components/GroupBand';
 import { PageHeader } from '../components/PageHeader';
-import { Segmented } from '../components/Segmented';
 import { StatusPill } from '../components/StatusPill';
-import { formatCount, formatRelative } from '../lib/format';
-import { groupRequests } from '../lib/pipelineGroups';
+import { Tabs } from '../components/Tabs';
+import { formatRelative } from '../lib/format';
+import { groupRequests, type GroupKey } from '../lib/pipelineGroups';
 import { STATUS_LABELS, isStatus } from '../lib/status';
+
+const GROUP_TONE: Record<GroupKey, BandTone> = {
+  needs_you: 'needs',
+  waiting: 'wait',
+  reached_out: 'reach',
+  answered: 'no',
+  closed: 'closed',
+};
 
 export function PipelinePage() {
   const [params, setParams] = useSearchParams();
@@ -51,32 +58,28 @@ export function PipelinePage() {
 
   const filtered = selected.length > 0 || Boolean(roleId);
   const open = (id: string) => navigate(`/requests/${id}`);
+  const total = requests.data?.total;
 
   return (
     <div>
       <PageHeader
         title="Pipeline"
-        meta={
-          requests.data
-            ? `${formatCount(shown)} ${shown === 1 ? 'request' : 'requests'}${
-                scope === 'mine' ? ' you asked for' : ''
-              }`
-            : ' '
+        tabs={
+          <Tabs
+            label="Request scope"
+            value={scope}
+            onChange={(next) => apply({ scope: next })}
+            options={[
+              { value: 'mine', label: 'My requests', count: scope === 'mine' ? total : undefined },
+              { value: 'all', label: 'All requests', count: scope === 'all' ? total : undefined },
+            ]}
+          />
         }
       >
-        <Segmented
-          label="Request scope"
-          value={scope}
-          onChange={(next) => apply({ scope: next })}
-          options={[
-            { value: 'mine', label: 'My requests' },
-            { value: 'all', label: 'All requests' },
-          ]}
-        />
-        <label className="inline-flex h-8 items-center gap-2 text-[13.5px] text-ink-2">
+        <label className="inline-flex h-8 items-center gap-2 text-[13px] text-carbon">
           <input
             type="checkbox"
-            className="accent-spruce"
+            className="accent-cobalt"
             checked={activeOnly}
             onChange={(e) => apply({ hideClosed: e.target.checked })}
           />
@@ -85,8 +88,8 @@ export function PipelinePage() {
       </PageHeader>
 
       {filtered ? (
-        <div className="mb-4 flex flex-wrap items-center gap-1.5 text-[13.5px] text-muted">
-          <span>Filtered:</span>
+        <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[12px] text-muted">
+          <span>Filtered</span>
           {selected.map((s) => (
             <RemovableChip
               key={s}
@@ -100,68 +103,63 @@ export function PipelinePage() {
         </div>
       ) : null}
 
-      {requests.isPending ? <TableSkeleton rows={6} cols={6} /> : null}
-      {requests.isError ? (
-        <ErrorState title="Couldn't load requests" error={requests.error} />
-      ) : null}
-      {requests.data && shown === 0 ? (
-        <EmptyState
-          title={
-            filtered || activeOnly
-              ? 'Nothing matches these filters.'
-              : scope === 'mine'
-                ? "You haven't asked anyone yet."
-                : 'No requests yet.'
-          }
-          action={
-            filtered || activeOnly ? (
-              <Button onClick={() => apply({ statuses: [], hideClosed: false, roleId: undefined })}>
-                Show all requests
-              </Button>
+      <div className="mt-4">
+        {requests.isPending ? <TableSkeleton rows={6} cols={5} /> : null}
+        {requests.isError ? (
+          <ErrorState title="Couldn't load requests" error={requests.error} />
+        ) : null}
+        {requests.data && shown === 0 ? (
+          <EmptyState>
+            {filtered || activeOnly ? (
+              <>
+                Nothing matches these filters.{' '}
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() => apply({ statuses: [], hideClosed: false, roleId: undefined })}
+                >
+                  Show all requests
+                </button>
+              </>
             ) : (
-              <Link to="/roles" className="link">
-                Open a role
-              </Link>
-            )
-          }
-        >
-          {filtered || activeOnly
-            ? null
-            : 'Pick a candidate on a role and ask the employee who knows them.'}
-        </EmptyState>
-      ) : null}
+              <>
+                {scope === 'mine' ? "You haven't asked anyone yet." : 'No requests yet.'} Pick a
+                candidate on a role and ask the employee who knows them.{' '}
+                <Link to="/roles" className="link">
+                  Open a role
+                </Link>
+              </>
+            )}
+          </EmptyState>
+        ) : null}
 
-      {shown > 0 ? (
-        <div className="border-y border-line bg-surface">
+        {shown > 0 ? (
           <table className="data-table">
             <thead>
               <tr>
-                <th className="w-[26%]">Candidate</th>
+                <th className="w-[30%]">Candidate</th>
                 <th>Employee asked</th>
                 <th>Status</th>
                 <th>Requested by</th>
-                <th className="w-[24%]">Last message</th>
                 <th className="num">Last activity</th>
               </tr>
             </thead>
             {groups.map((g) => (
               <tbody key={g.key} aria-label={g.title}>
-                <tr>
-                  <th colSpan={6} scope="rowgroup" className="group">
-                    {g.title}
-                    <span className="ml-2 text-[14px] font-normal text-muted tnum">
-                      {g.items.length}
-                    </span>
-                  </th>
-                </tr>
+                <GroupBand
+                  title={g.title}
+                  count={g.items.length}
+                  colSpan={5}
+                  tone={GROUP_TONE[g.key]}
+                />
                 {g.items.map((r) => (
                   <RequestRow key={r.id} r={r} onOpen={() => open(r.id)} />
                 ))}
               </tbody>
             ))}
           </table>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -180,39 +178,26 @@ function RequestRow({ r, onOpen }: { r: RequestSummary; onOpen: () => void }) {
       }}
     >
       <td>
-        <div className="name">{r.contact.full_name}</div>
-        <div className="mt-0.5 truncate text-[13px] text-ink-2">{r.role.title}</div>
+        <div className="font-medium leading-5 text-ink">{r.contact.full_name}</div>
+        <div className="truncate text-[12px] leading-4 tracking-normal text-muted">
+          {r.role.title}
+        </div>
       </td>
-      <td className="text-ink">{r.employee.full_name}</td>
+      <td className="text-carbon">{r.employee.full_name}</td>
       <td>
         <div className="flex flex-wrap items-center gap-2">
           <StatusPill status={r.status} />
           {r.stale ? (
-            <span className="whitespace-nowrap text-[13px] font-medium text-ochre tnum">
+            <span className="whitespace-nowrap text-[12px] font-medium tracking-normal text-needs-text tnum">
               No reply · {r.days_waiting ?? 0}d
             </span>
           ) : null}
         </div>
       </td>
-      <td className="text-ink-2" title={r.requested_by}>
+      <td className="text-carbon" title={r.requested_by}>
         {r.requested_by_name}
       </td>
-      <td className="max-w-[340px]">
-        {r.last_message ? (
-          <div className="flex min-w-0 items-center gap-1.5">
-            <DeliveryCheck delivered={r.last_message.delivered} error={r.last_message.error} />
-            <span
-              className="min-w-0 truncate text-[13.5px] text-ink-2"
-              title={r.last_message.excerpt}
-            >
-              {r.last_message.excerpt}
-            </span>
-          </div>
-        ) : (
-          <span className="text-muted">—</span>
-        )}
-      </td>
-      <td className="num whitespace-nowrap text-ink-2 tnum" title={r.last_event_at ?? r.updated_at}>
+      <td className="num whitespace-nowrap text-muted tnum" title={r.last_event_at ?? r.updated_at}>
         {formatRelative(r.last_event_at ?? r.updated_at)}
       </td>
     </tr>
