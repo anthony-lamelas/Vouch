@@ -1,8 +1,10 @@
 name: CI
 
+# Pull requests run CI once per push (pull_request event). Pushes only trigger on main,
+# which is what gates the Render deploy, so a branch push without a PR runs nothing.
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
 
 concurrency:
