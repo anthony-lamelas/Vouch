@@ -66,7 +66,7 @@ A referral request is a ticket with a status. Every change appends a `referral_e
 | employee_accepted | Bob | Bob will reach out |
 | employee_declined | Bob (reason: dont_know_well, not_a_fit, not_looking, other + free text) | Request parks; recruiter sees the reason and picks another connected colleague (`POST /requests/{id}/reroute`) or closes |
 | contacted | Bob | Bob has messaged the candidate |
-| candidate_interested | Bob | Candidate wants to talk |
+| candidate_interested | Bob | Candidate said yes. VOUCH gives the employee a message with the recruiter's booking link to pass on; recruiter closes with the outcome. Production: hand off into Ashby (candidate + application credited to the employee). |
 | candidate_declined | Bob | Candidate said no |
 | no_response | Bob | No answer after a nudge |
 | closed | recruiter | Terminal, with an outcome note |

@@ -52,6 +52,11 @@ class Settings(BaseSettings):
         default="", description="Login email that owns the R&D and Customer Engineering roles"
     )
     demo_recruiter_name: str = ""
+    demo_booking_url: str = Field(
+        default="",
+        description="Scheduling link (Google appointment page, Calendly) for the demo recruiter; "
+        "sent to the employee to pass on once the candidate says they're interested",
+    )
     demo_employee_email: str = Field(
         default="", description="Email for the seeded 'Bob' employee; defaults to a synthetic one"
     )

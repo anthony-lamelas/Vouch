@@ -71,3 +71,14 @@ def recruiter_names(db: Session) -> dict[str, str]:
 
 def display_name(email: str, names: Mapping[str, str]) -> str:
     return names.get(email) or name_from_email(email)
+
+
+def booking_url_for(db: Session, settings: Settings, email: str) -> str:
+    """The recruiter's scheduling link, if they have one. The demo login's can come from env so
+    it works without a reseed."""
+    recruiter = db.get(Recruiter, email)
+    if recruiter is not None and recruiter.booking_url:
+        return recruiter.booking_url
+    if settings.demo_booking_url and email == settings.demo_recruiter_email:
+        return settings.demo_booking_url
+    return ""

@@ -418,6 +418,9 @@ function Actions({
   const [attemptedClose, setAttemptedClose] = useState(false);
   const [nextEmployee, setNextEmployee] = useState<string | null>(null);
   const declined = r.status === 'employee_declined';
+  const bookingSent = r.events.some(
+    (e) => e.from_status === 'candidate_interested' && e.to_status === 'candidate_interested',
+  );
   // Asking someone else has its own flow; "requested" is not a status to record by hand.
   const manual: Status[] = r.allowed_transitions.filter((s) => s !== 'closed' && s !== 'requested');
   const [manualStatus, setManualStatus] = useState<Status | ''>('');
@@ -465,6 +468,12 @@ function Actions({
       {r.stale ? (
         <span className="text-[13px] font-medium text-needs-text">
           No reply from {r.contact.full_name.split(' ')[0]} in {r.days_waiting} days.
+        </span>
+      ) : null}
+      {r.status === 'candidate_interested' ? (
+        <span className="text-[13px] font-medium text-yes-text">
+          {contactFirst} is interested.
+          {bookingSent ? ` ${employeeFirst} has the booking link to pass on.` : ''}
         </span>
       ) : null}
       {declined ? (

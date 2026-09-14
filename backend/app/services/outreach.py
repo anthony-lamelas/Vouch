@@ -97,6 +97,20 @@ def draft_casual(ctx: OutreachContext) -> str:
     )
 
 
+def draft_booking(ctx: OutreachContext, booking_url: str) -> str:
+    """What the employee passes on once the candidate says yes: how to book a recruiter screen."""
+    who = (
+        f"{ctx.recruiter_first_name} from our recruiting team"
+        if ctx.recruiter_first_name
+        else "our recruiting team"
+    )
+    return (
+        f"Hey {ctx.contact_first_name}! Great to hear you're interested. {who} would love to "
+        f"chat. Grab a time that works for you here and they'll take it from there: "
+        f"{booking_url}"
+    )
+
+
 def draft_formal(ctx: OutreachContext) -> str:
     shared = (
         f"{ctx.shared_history}, and I've followed your work since. " if ctx.shared_history else ""

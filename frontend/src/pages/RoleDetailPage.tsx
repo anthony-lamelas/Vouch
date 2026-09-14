@@ -131,7 +131,7 @@ export function RoleDetailPage() {
           type="search"
           value={qInput}
           onChange={(e) => setQInput(e.target.value)}
-          placeholder="Search by name, company or title"
+          placeholder="Search by name, company, or title"
           aria-label="Search candidates"
           className="field h-8 w-[240px] text-[13px]"
         />
