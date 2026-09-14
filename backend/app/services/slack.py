@@ -11,7 +11,7 @@ from slack_sdk.signature import SignatureVerifier
 
 from app.config import Settings
 from app.models import Employee, ReferralRequest
-from app.services.lifecycle import LABELS, DeclineReason, Status, next_employee_actions
+from app.services.lifecycle import DeclineReason, Status, next_employee_actions
 from app.services.outreach import Drafts, OutreachContext
 
 BUTTONS: dict[str, tuple[Status, DeclineReason | None, str | None]] = {
@@ -70,6 +70,7 @@ def build_request_blocks(
     demo_routed: bool,
     app_url: str,
     requested_by_name: str | None = None,
+    routing_note: str = "",
 ) -> list[dict[str, Any]]:
     blocks: list[dict[str, Any]] = [
         {
@@ -86,18 +87,6 @@ def build_request_blocks(
                 ),
             },
         },
-        {
-            "type": "context",
-            "elements": [
-                {
-                    "type": "mrkdwn",
-                    "text": (
-                        f"Tap a button, or just reply here in plain English. "
-                        f"<{app_url}/requests/{request.id}|View in VOUCH>"
-                    ),
-                }
-            ],
-        },
     ]
     if demo_routed:
         blocks.append(
@@ -108,7 +97,9 @@ def build_request_blocks(
                         "type": "mrkdwn",
                         "text": (
                             f"_Demo routing: this would go to {employee.full_name} "
-                            f"({employee.email})._"
+                            f"({employee.email})"
+                            + (f"; sent to you because it {routing_note}" if routing_note else "")
+                            + "._"
                         ),
                     }
                 ],
@@ -129,13 +120,6 @@ def status_blocks(
 ) -> list[dict[str, Any]]:
     """Return a copy of the message blocks reflecting the new status and next buttons."""
     kept = [b for b in blocks if b.get("block_id") not in {"vouch_actions", "vouch_status"}]
-    kept.append(
-        {
-            "type": "context",
-            "block_id": "vouch_status",
-            "elements": [{"type": "mrkdwn", "text": f"*Status:* {LABELS[status]}"}],
-        }
-    )
     buttons = action_buttons(status, request_id)
     if buttons:
         kept.append({"type": "actions", "block_id": "vouch_actions", "elements": buttons})
@@ -144,6 +128,8 @@ def status_blocks(
 
 class Notifier(Protocol):
     def send(self, *, recipient: str, text: str, blocks: list[dict[str, Any]]) -> SendResult: ...
+
+    def lookup_user_by_email(self, email: str) -> str | None: ...
 
     def update(
         self, *, channel_id: str, ts: str, text: str, blocks: list[dict[str, Any]]
@@ -162,6 +148,9 @@ class NullNotifier:
         self.sent.append({"recipient": recipient, "text": text, "blocks": blocks})
         return SendResult(delivered=False, recipient=recipient, error="slack_disabled")
 
+    def lookup_user_by_email(self, email: str) -> str | None:
+        return None
+
     def update(self, *, channel_id: str, ts: str, text: str, blocks: list[dict[str, Any]]) -> bool:
         return False
 
@@ -172,6 +161,20 @@ class NullNotifier:
 class SlackNotifier:
     def __init__(self, token: str) -> None:
         self._client = WebClient(token=token)
+        self._email_cache: dict[str, str | None] = {}
+
+    def lookup_user_by_email(self, email: str) -> str | None:
+        """Slack user id for a workspace member with this email, cached per process."""
+        key = email.strip().lower()
+        if not key:
+            return None
+        if key not in self._email_cache:
+            try:
+                found = self._client.users_lookupByEmail(email=key)
+                self._email_cache[key] = str(found["user"]["id"])
+            except SlackApiError:
+                self._email_cache[key] = None
+        return self._email_cache[key]
 
     def send(self, *, recipient: str, text: str, blocks: list[dict[str, Any]]) -> SendResult:
         try:
@@ -221,8 +224,40 @@ def verify_signature(settings: Settings, *, body: bytes, timestamp: str, signatu
     return bool(verifier.is_valid(body=body, timestamp=timestamp, signature=signature))
 
 
-def resolve_recipient(settings: Settings, employee: Employee) -> tuple[str, bool]:
-    """Who actually receives the DM. In the demo everything routes to one Slack user."""
+def resolve_recipient(
+    settings: Settings,
+    employee: Employee,
+    *,
+    requester_email: str = "",
+    notifier: Notifier | None = None,
+) -> tuple[str, bool]:
+    """Who actually receives the DM.
+
+    Demo routing, in order: the requesting recruiter if their login email matches a Slack
+    member (so each reviewer plays the employee in their own DMs), then SLACK_DEMO_USER_ID,
+    then the employee's own Slack id. The bool says whether the DM was redirected.
+    """
+    if settings.slack_route_to_requester and requester_email and notifier is not None:
+        matched = notifier.lookup_user_by_email(requester_email)
+        if matched:
+            return matched, employee.slack_user_id != matched
     if settings.slack_demo_user_id:
         return settings.slack_demo_user_id, employee.slack_user_id != settings.slack_demo_user_id
     return employee.slack_user_id or "", False
+
+
+def routing_reason(
+    settings: Settings, employee: Employee, recipient: str, *, requester_email: str = ""
+) -> str:
+    """Short explanation for the demo-routing line on the card."""
+    if not recipient or recipient == (employee.slack_user_id or ""):
+        return ""
+    if (
+        settings.slack_demo_user_id
+        and recipient == settings.slack_demo_user_id
+        and (not requester_email or recipient != requester_email)
+    ):
+        if settings.slack_route_to_requester:
+            return "fallback demo user; no Slack member matched the requester's email"
+        return "fallback demo user"
+    return "matched the requester's Slack email"

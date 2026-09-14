@@ -453,3 +453,32 @@ def test_ask_preview_and_edited_message(client: TestClient) -> None:
     ).json()
     assert created["outreach_casual"].startswith("Hey, quick one")
     assert created["messages"][0]["body"].startswith("Hey, quick one")
+
+
+def test_demo_routing_prefers_the_requesting_recruiter() -> None:
+    from types import SimpleNamespace
+
+    from app.config import Settings
+    from app.services.slack import NullNotifier, resolve_recipient
+
+    class EmailNotifier(NullNotifier):
+        def lookup_user_by_email(self, email: str) -> str | None:
+            return "U_REVIEWER" if email == "reviewer@example.com" else None
+
+    settings = Settings(slack_demo_user_id="U_FALLBACK", slack_route_to_requester=True)
+    employee = SimpleNamespace(slack_user_id=None)
+    matched, redirected = resolve_recipient(
+        settings, employee, requester_email="reviewer@example.com", notifier=EmailNotifier()
+    )
+    assert (matched, redirected) == ("U_REVIEWER", True)
+    fallback, _ = resolve_recipient(
+        settings, employee, requester_email="nobody@example.com", notifier=EmailNotifier()
+    )
+    assert fallback == "U_FALLBACK"
+    off = Settings(slack_demo_user_id="U_FALLBACK", slack_route_to_requester=False)
+    assert (
+        resolve_recipient(
+            off, employee, requester_email="reviewer@example.com", notifier=EmailNotifier()
+        )[0]
+        == "U_FALLBACK"
+    )

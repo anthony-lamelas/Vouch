@@ -36,6 +36,7 @@ from app.services.slack import (
     action_buttons,
     build_request_blocks,
     resolve_recipient,
+    routing_reason,
     status_blocks,
 )
 
@@ -312,7 +313,9 @@ class ReferralService:
                 "elements": action_buttons(current, str(req.id)),
             },
         ]
-        recipient, _ = resolve_recipient(self.settings, employee)
+        recipient, _ = resolve_recipient(
+            self.settings, employee, requester_email=req.requested_by, notifier=self.notifier
+        )
         result = (
             self.notifier.send(
                 recipient=recipient,
@@ -430,7 +433,9 @@ class ReferralService:
     def _notify(
         self, req: ReferralRequest, ctx: OutreachContext, drafts: Drafts, employee: Employee
     ) -> OutreachMessage:
-        recipient, demo_routed = resolve_recipient(self.settings, employee)
+        recipient, demo_routed = resolve_recipient(
+            self.settings, employee, requester_email=req.requested_by, notifier=self.notifier
+        )
         blocks = build_request_blocks(
             request=req,
             ctx=ctx,
@@ -439,6 +444,9 @@ class ReferralService:
             demo_routed=demo_routed,
             app_url=self.settings.app_base_url,
             requested_by_name=display_name(req.requested_by, recruiter_names(self.db)),
+            routing_note=routing_reason(
+                self.settings, employee, recipient, requester_email=req.requested_by
+            ),
         )
         text = (
             f"Referral request: could you reach out to {ctx.contact_full_name} "
