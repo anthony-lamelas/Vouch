@@ -20,7 +20,7 @@ import {
   type FilterAction,
   type TierField,
 } from '../lib/candidateFilters';
-import { buttonClass, filterPillClass } from '../lib/classes';
+import { buttonClass } from '../lib/classes';
 import { firstName, formatCount } from '../lib/format';
 import { whyLine } from '../lib/reasons';
 import { familyLabel, seniorityLabel } from '../lib/labels';
@@ -151,7 +151,11 @@ export function RoleDetailPage() {
         />
         <button
           type="button"
-          className={filterPillClass(filters.sameRegion)}
+          className={`inline-flex h-8 items-center gap-1 rounded-tag border px-2.5 text-[14px] font-medium tracking-normal transition-colors ${
+            filters.sameRegion
+              ? 'border-reach-bg bg-reach-bg text-reach-text'
+              : 'border-line bg-canvas text-carbon hover:border-caption hover:text-ink'
+          }`}
           aria-pressed={filters.sameRegion}
           title={
             filters.sameRegion

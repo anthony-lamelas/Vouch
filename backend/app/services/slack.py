@@ -217,6 +217,19 @@ def status_blocks(
                 "text": {"type": "mrkdwn", "text": f"{thanks}{why}"},
             }
         )
+    if status == Status.CLOSED and note:
+        who = f" {employee_first}" if employee_first else ""
+        by = f" from {recruiter_first}" if recruiter_first else ""
+        kept.append(
+            {
+                "type": "section",
+                "block_id": "vouch_status",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"Update{by}: _{note}_. Thanks again{who}!",
+                },
+            }
+        )
     buttons = action_buttons(status, request_id, contact_first)
     if buttons:
         kept.append({"type": "actions", "block_id": "vouch_actions", "elements": buttons})

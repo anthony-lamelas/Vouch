@@ -79,7 +79,9 @@ export function PipelinePage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const selected = useMemo(() => params.getAll('status').filter(isStatus), [params]);
-  const activeOnly = params.get('active_only') === '1';
+  // Closed requests are hidden unless asked for; the URL carries `show_closed=1` when shown.
+  const showClosed = params.get('show_closed') === '1';
+  const activeOnly = !showClosed;
   const roleId = params.get('role_id') ?? undefined;
   const scope: 'mine' | 'all' = params.get('scope') === 'all' ? 'all' : 'mine';
   const sort = useMemo(() => parseSort(params), [params]);
@@ -108,14 +110,14 @@ export function PipelinePage() {
 
   const apply = (next: {
     statuses?: Status[];
-    hideClosed?: boolean;
+    showClosed?: boolean;
     scope?: 'mine' | 'all';
     roleId?: string | undefined;
     sort?: SortState;
   }) => {
     const p = new URLSearchParams();
     for (const x of next.statuses ?? selected) p.append('status', x);
-    if (next.hideClosed ?? activeOnly) p.set('active_only', '1');
+    if (next.showClosed ?? showClosed) p.set('show_closed', '1');
     const rid = 'roleId' in next ? next.roleId : roleId;
     if (rid) p.set('role_id', rid);
     p.set('scope', next.scope ?? scope);
@@ -148,10 +150,10 @@ export function PipelinePage() {
           <input
             type="checkbox"
             className="accent-cobalt"
-            checked={activeOnly}
-            onChange={(e) => apply({ hideClosed: e.target.checked })}
+            checked={showClosed}
+            onChange={(e) => apply({ showClosed: e.target.checked })}
           />
-          Hide closed
+          Show closed
         </label>
       </PageHeader>
 
@@ -207,7 +209,7 @@ export function PipelinePage() {
         ) : null}
         {requests.data && rows.length === 0 ? (
           <EmptyState>
-            {filtered || activeOnly || q ? (
+            {filtered || q ? (
               <>
                 Nothing matches these filters.{' '}
                 <button
@@ -215,7 +217,7 @@ export function PipelinePage() {
                   className="link"
                   onClick={() => {
                     setQ('');
-                    apply({ statuses: [], hideClosed: false, roleId: undefined });
+                    apply({ statuses: [], roleId: undefined });
                   }}
                 >
                   Show all requests
