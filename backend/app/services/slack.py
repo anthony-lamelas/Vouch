@@ -196,25 +196,20 @@ def status_blocks(
             )
     if status == Status.CANDIDATE_DECLINED:
         who = f" {employee_first}" if employee_first else ""
-        why = f" Noted: _{note}_." if note else ""
         kept.append(
             {
                 "type": "section",
                 "block_id": "vouch_status",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"No worries, thanks for reaching out{who}.{why}",
-                },
+                "text": {"type": "mrkdwn", "text": f"No worries, thanks for reaching out{who}."},
             }
         )
     if status == Status.EMPLOYEE_DECLINED:
         thanks = f"Thanks{', ' + employee_first if employee_first else ''}, no problem."
-        why = f" Noted: _{note}_." if note else ""
         kept.append(
             {
                 "type": "section",
                 "block_id": "vouch_status",
-                "text": {"type": "mrkdwn", "text": f"{thanks}{why}"},
+                "text": {"type": "mrkdwn", "text": thanks},
             }
         )
     if status == Status.CLOSED and note:

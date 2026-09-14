@@ -52,6 +52,11 @@ class Settings(BaseSettings):
         default="", description="Login email that owns the R&D and Customer Engineering roles"
     )
     demo_recruiter_name: str = ""
+    demo_recruiter_teammates: str = Field(
+        default="milesjuddporter@gmail.com:Miles Porter",
+        description="Other logins on the demo recruiter's team, comma-separated 'email:Name'. "
+        "Everyone on the team sees the same 'My roles' and 'My requests'",
+    )
     demo_booking_url: str = Field(
         default=(
             "https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ0iaO8bb3"

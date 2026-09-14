@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import func, or_, select
 
-from app.api.deps import DB, Referrals, User
+from app.api.deps import DB, AppSettings, Referrals, User
 from app.api.serializers import (
     REQUEST_LOAD_OPTIONS,
     connection_out,
@@ -25,7 +25,7 @@ from app.schemas import (
     TransitionIn,
 )
 from app.services.lifecycle import RECRUITER_SETTABLE, IllegalTransitionError, Status
-from app.services.ownership import recruiter_names
+from app.services.ownership import owning_emails, recruiter_names
 from app.services.referrals import ActiveRequestExistsError, NoConnectionError, NotFoundError
 
 router = APIRouter(prefix="/requests", tags=["requests"])
@@ -35,16 +35,18 @@ router = APIRouter(prefix="/requests", tags=["requests"])
 def list_requests(
     db: DB,
     user: User,
+    settings: AppSettings,
     status: Annotated[list[Status] | None, Query()] = None,
     role_id: uuid.UUID | None = None,
     active_only: bool = False,
     mine: bool = False,
     limit: Annotated[int, Query(ge=1, le=200)] = 100,
 ) -> RequestPage:
+    owners = owning_emails(user.email, settings)
     stmt = select(ReferralRequest).options(*REQUEST_LOAD_OPTIONS)
     if mine:
         stmt = stmt.join(Role, Role.id == ReferralRequest.role_id).where(
-            or_(ReferralRequest.requested_by == user.email, Role.owner_email == user.email)
+            or_(ReferralRequest.requested_by.in_(owners), Role.owner_email.in_(owners))
         )
     if status:
         stmt = stmt.where(ReferralRequest.status.in_([s.value for s in status]))
@@ -58,7 +60,7 @@ def list_requests(
     items = []
     for r in rows:
         summary = request_summary(r, names)
-        summary.is_mine = r.requested_by == user.email or r.role.owner_email == user.email
+        summary.is_mine = r.requested_by in owners or r.role.owner_email in owners
         items.append(summary)
     return RequestPage(items=items, total=total)
 

@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import Text, cast, func, literal, or_, select
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 
-from app.api.deps import DB, User
+from app.api.deps import DB, AppSettings, User
 from app.api.serializers import connection_out, connections_by_contact
 from app.models import CompanyTier, Contact, MatchScore, ReferralRequest, Role, SchoolTier
 from app.schemas import (
@@ -20,6 +20,7 @@ from app.schemas import (
 )
 from app.services.geo import cities_in_regions, regions_of
 from app.services.lifecycle import ACTIVE_STATUSES, Status
+from app.services.ownership import owning_emails
 
 router = APIRouter(prefix="/roles", tags=["roles"])
 
@@ -50,22 +51,24 @@ def _counts(db: DB) -> tuple[dict[uuid.UUID, int], dict[uuid.UUID, int]]:
 def list_roles(
     db: DB,
     user: User,
+    settings: AppSettings,
     department: str | None = None,
     q: str | None = None,
     mine: bool = False,
 ) -> list[RoleSummary]:
+    owners = owning_emails(user.email, settings)
     stmt = select(Role).where(Role.is_active.is_(True)).order_by(Role.department, Role.title)
     if department:
         stmt = stmt.where(Role.department == department)
     if q:
         stmt = stmt.where(Role.title.ilike(f"%{q}%"))
     if mine:
-        stmt = stmt.where(Role.owner_email == user.email)
+        stmt = stmt.where(Role.owner_email.in_(owners))
     strong, active = _counts(db)
     out: list[RoleSummary] = []
     for role in db.scalars(stmt).all():
         summary = RoleSummary.model_validate(role)
-        summary.is_mine = role.owner_email == user.email
+        summary.is_mine = role.owner_email in owners
         summary.strong_match_count = strong.get(role.id, 0)
         summary.active_request_count = active.get(role.id, 0)
         out.append(summary)
@@ -73,13 +76,13 @@ def list_roles(
 
 
 @router.get("/{role_id}", response_model=RoleDetail)
-def get_role(role_id: uuid.UUID, db: DB, user: User) -> RoleDetail:
+def get_role(role_id: uuid.UUID, db: DB, user: User, settings: AppSettings) -> RoleDetail:
     role = db.get(Role, role_id)
     if role is None:
         raise HTTPException(status_code=404, detail="Role not found")
     strong, active = _counts(db)
     detail = RoleDetail.model_validate(role)
-    detail.is_mine = role.owner_email == user.email
+    detail.is_mine = role.owner_email in owning_emails(user.email, settings)
     detail.strong_match_count = strong.get(role.id, 0)
     detail.active_request_count = active.get(role.id, 0)
     return detail

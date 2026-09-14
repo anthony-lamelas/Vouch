@@ -157,7 +157,7 @@ def seed_database(db: Session, settings: Settings, *, prefer_live_roles: bool = 
     postings, source = fetch_or_snapshot(prefer_live=prefer_live_roles)
     sync_roles(db, postings, source=source, settings=settings)
     scores = recompute_match_scores(db)
-    requests = seed_demo_requests(db, exclude_owner=settings.demo_recruiter_email)
+    requests = seed_demo_requests(db, demo_owner=settings.demo_recruiter_email)
     db.commit()
     return SeedReport(
         employees=len(graph.employees),
@@ -172,24 +172,21 @@ def seed_database(db: Session, settings: Settings, *, prefer_live_roles: bool = 
 
 # ---- Demo requests -----------------------------------------------------------------------------
 
-_SCENARIOS: tuple[tuple[str, list[tuple[Status, int, str | None]]], ...] = (
-    ("engineering", [(Status.REQUESTED, 3, None), (Status.EMPLOYEE_ACCEPTED, 2, None)]),
-    (
+
+@dataclass(frozen=True)
+class Scenario:
+    family: str
+    steps: list[tuple[Status, int, str | None]]  # (status, days ago, note)
+    min_connections: int = 1
+
+
+# Requests other recruiters have going, so 'All requests' has some life in it.
+_SCENARIOS: tuple[Scenario, ...] = (
+    Scenario(
         "customer_engineering",
-        [
-            (Status.REQUESTED, 11, None),
-            (Status.EMPLOYEE_ACCEPTED, 10, "Sent her a LinkedIn DM"),
-        ],
+        [(Status.REQUESTED, 11, None), (Status.EMPLOYEE_ACCEPTED, 10, "Sent her a LinkedIn DM")],
     ),
-    (
-        "ml_research",
-        [
-            (Status.REQUESTED, 9, None),
-            (Status.EMPLOYEE_ACCEPTED, 8, None),
-            (Status.CANDIDATE_INTERESTED, 3, "Interested, wants to chat next week"),
-        ],
-    ),
-    (
+    Scenario(
         "sales",
         [
             (Status.REQUESTED, 12, None),
@@ -198,7 +195,7 @@ _SCENARIOS: tuple[tuple[str, list[tuple[Status, int, str | None]]], ...] = (
             (Status.CLOSED, 6, "Closed automatically: candidate passed"),
         ],
     ),
-    (
+    Scenario(
         "marketing",
         [
             (Status.REQUESTED, 20, None),
@@ -207,8 +204,8 @@ _SCENARIOS: tuple[tuple[str, list[tuple[Status, int, str | None]]], ...] = (
             (Status.CLOSED, 10, "Intro made to hiring manager; in process"),
         ],
     ),
-    (
-        "infrastructure",
+    Scenario(
+        "customer_engineering",
         [
             (Status.REQUESTED, 5, None),
             (
@@ -218,8 +215,9 @@ _SCENARIOS: tuple[tuple[str, list[tuple[Status, int, str | None]]], ...] = (
             ),
             (Status.REQUESTED, 4, None),
         ],
+        min_connections=2,
     ),
-    (
+    Scenario(
         "product",
         [
             (Status.REQUESTED, 2, None),
@@ -229,23 +227,54 @@ _SCENARIOS: tuple[tuple[str, list[tuple[Status, int, str | None]]], ...] = (
                 "Not a fit for this role: she's moved into people management and loves it",
             ),
         ],
+        min_connections=2,
+    ),
+)
+
+# The demo team's own pipeline on their R&D roles: two asks out, two employees reaching out
+# (one gone quiet), one employee who passed with colleagues left to ask. The first ask is on
+# someone several employees know, so a decline has people to re-route to.
+_DEMO_SCENARIOS: tuple[Scenario, ...] = (
+    Scenario("ml_research", [(Status.REQUESTED, 1, None)], min_connections=3),
+    Scenario("engineering", [(Status.REQUESTED, 2, None)]),
+    Scenario(
+        "infrastructure",
+        [(Status.REQUESTED, 5, None), (Status.EMPLOYEE_ACCEPTED, 4, "Pinged her on LinkedIn")],
+    ),
+    Scenario("data", [(Status.REQUESTED, 12, None), (Status.EMPLOYEE_ACCEPTED, 11, None)]),
+    Scenario(
+        "security",
+        [
+            (Status.REQUESTED, 3, None),
+            (
+                Status.EMPLOYEE_DECLINED,
+                2,
+                "Not a fit for this role: he's deep in infra and not looking to move",
+            ),
+        ],
+        min_connections=2,
     ),
 )
 
 
 def _pick_role(
-    db: Session, family: str, used: set[uuid.UUID], *, exclude_owner: str = ""
+    db: Session,
+    family: str,
+    used: set[uuid.UUID],
+    *,
+    owner: str | None = None,
+    exclude_owner: str = "",
 ) -> Role | None:
-    """A role for a demo scenario. The demo login's own roles are left untouched so that
-    account starts with an empty pipeline and nothing in 'Needs you'."""
-    stmt = (
-        select(Role)
-        .where(Role.is_active.is_(True), Role.job_family == family, Role.id.not_in(used))
-        .order_by(Role.title)
-    )
+    """A role for a scenario: in the family if one is free, else any free role of the owner's."""
+    base = select(Role).where(Role.is_active.is_(True), Role.id.not_in(used)).order_by(Role.title)
+    if owner:
+        base = base.where(Role.owner_email == owner)
     if exclude_owner:
-        stmt = stmt.where(Role.owner_email != exclude_owner)
-    return db.scalars(stmt).first()
+        base = base.where(Role.owner_email != exclude_owner)
+    role = db.scalars(base.where(Role.job_family == family)).first()
+    if role is None and owner:
+        role = db.scalars(base).first()
+    return role
 
 
 def _pick_contact(
@@ -271,18 +300,38 @@ def _pick_contact(
     return db.scalars(stmt).first()
 
 
-def seed_demo_requests(db: Session, *, exclude_owner: str = "") -> int:
-    now = datetime.now(UTC)
-    generator = TemplateGenerator()
+def seed_demo_requests(db: Session, *, demo_owner: str = "") -> int:
+    """Synthetic recruiters' requests on their roles, then the demo team's on theirs."""
     used_roles: set[uuid.UUID] = set()
     used_contacts: set[uuid.UUID] = set()
+    created = _run_scenarios(
+        db, _SCENARIOS, used_roles, used_contacts, owner=None, exclude_owner=demo_owner
+    )
+    if demo_owner:
+        created += _run_scenarios(
+            db, _DEMO_SCENARIOS, used_roles, used_contacts, owner=demo_owner, exclude_owner=""
+        )
+    return created
+
+
+def _run_scenarios(
+    db: Session,
+    scenarios: tuple[Scenario, ...],
+    used_roles: set[uuid.UUID],
+    used_contacts: set[uuid.UUID],
+    *,
+    owner: str | None,
+    exclude_owner: str,
+) -> int:
+    now = datetime.now(UTC)
+    generator = TemplateGenerator()
     created = 0
-    for family, steps in _SCENARIOS:
-        role = _pick_role(db, family, used_roles, exclude_owner=exclude_owner)
+    for scenario in scenarios:
+        steps = scenario.steps
+        role = _pick_role(db, scenario.family, used_roles, owner=owner, exclude_owner=exclude_owner)
         if role is None:
             continue
-        rerouted = any(s == Status.EMPLOYEE_DECLINED for s, _, _ in steps)
-        contact = _pick_contact(db, role, used_contacts, min_connections=2 if rerouted else 1)
+        contact = _pick_contact(db, role, used_contacts, min_connections=scenario.min_connections)
         if contact is None:
             continue
         used_roles.add(role.id)

@@ -73,6 +73,13 @@ def get_current_user(
     request: Request, settings: Annotated[Settings, Depends(get_settings)]
 ) -> CurrentUser:
     if settings.auth_disabled:
+        # Local/dev only: X-Demo-User picks which recruiter to act as.
+        as_email = request.headers.get("X-Demo-User", "").strip()
+        if as_email:
+            from app.services.ownership import demo_team, name_from_email
+
+            name = demo_team(settings).get(as_email) or name_from_email(as_email)
+            return CurrentUser(id=f"local-{as_email}", email=as_email, name=name)
         return CurrentUser(id="local-dev", email="recruiter@vouch.local", name="Local Recruiter")
     header = request.headers.get("Authorization", "")
     if not header.startswith("Bearer "):
