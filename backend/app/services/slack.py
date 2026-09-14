@@ -127,9 +127,28 @@ def status_blocks(
     *,
     contact_first: str = "them",
     employee_first: str = "",
+    suggested_message: str = "",
 ) -> list[dict[str, Any]]:
     """Return a copy of the message blocks reflecting the new status and next buttons."""
-    kept = [b for b in blocks if b.get("block_id") not in {"vouch_actions", "vouch_status"}]
+    kept = [
+        b
+        for b in blocks
+        if b.get("block_id") not in {"vouch_actions", "vouch_status", "vouch_suggested"}
+    ]
+    if status == Status.EMPLOYEE_ACCEPTED and suggested_message:
+        kept.append(
+            {
+                "type": "section",
+                "block_id": "vouch_suggested",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        f"*Suggested message to {contact_first}* (copy, tweak, send)\n"
+                        f"```{suggested_message}```"
+                    ),
+                },
+            }
+        )
     if status == Status.EMPLOYEE_ACCEPTED:
         thanks = f"Thanks{', ' + employee_first if employee_first else ''}!"
         kept.append(
