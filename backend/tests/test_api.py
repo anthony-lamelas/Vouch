@@ -453,8 +453,3 @@ def test_ask_preview_and_edited_message(client: TestClient) -> None:
     ).json()
     assert created["outreach_casual"].startswith("Hey, quick one")
     assert created["messages"][0]["body"].startswith("Hey, quick one")
-    assert (
-        created["messages"][0]["blocks"] == []
-        or "Hey, quick one" in str(created["messages"][0]["blocks"])
-        or True
-    )
