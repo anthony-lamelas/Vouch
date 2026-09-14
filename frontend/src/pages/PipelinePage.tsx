@@ -188,7 +188,14 @@ export function PipelinePage() {
                     <div className="text-[12px] text-muted">{r.employee.title}</div>
                   </td>
                   <td>
-                    <StatusPill status={r.status} />
+                    <div className="flex items-center gap-2">
+                      <StatusPill status={r.status} />
+                      {r.stale ? (
+                        <span className="text-[11.5px] font-medium text-amber-700 whitespace-nowrap">
+                          No reply · {r.days_waiting}d
+                        </span>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="text-ink-2 text-[12.5px]">{r.requested_by}</td>
                   <td className="num tnum text-ink-2 whitespace-nowrap" title={r.updated_at}>

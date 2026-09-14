@@ -24,18 +24,6 @@ class Classification:
 # because "I messaged her and she's interested" should land on candidate_interested.
 _RULES: Final[tuple[tuple[Status, DeclineReason | None, tuple[str, ...]], ...]] = (
     (
-        Status.NO_RESPONSE,
-        None,
-        (
-            r"no (reply|response|answer)",
-            r"hasn'?t (replied|responded|answered|gotten back)",
-            r"ghost",
-            r"radio silence",
-            r"never (heard|got) back",
-            r"crickets",
-        ),
-    ),
-    (
         Status.CANDIDATE_DECLINED,
         None,
         (

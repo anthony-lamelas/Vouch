@@ -4,7 +4,6 @@ export type Status =
   | 'employee_declined'
   | 'candidate_interested'
   | 'candidate_declined'
-  | 'no_response'
   | 'closed';
 
 export type DeclineReason = 'dont_know_well' | 'not_a_fit';
@@ -181,6 +180,8 @@ export interface RequestSummary {
   created_at: string;
   updated_at: string;
   last_event_at: string | null;
+  days_waiting: number | null;
+  stale: boolean;
 }
 
 export interface RequestDetail extends RequestSummary {

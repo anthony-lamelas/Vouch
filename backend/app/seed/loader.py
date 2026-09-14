@@ -158,9 +158,8 @@ _SCENARIOS: tuple[tuple[str, list[tuple[Status, int, str | None]]], ...] = (
     (
         "customer_engineering",
         [
-            (Status.REQUESTED, 6, None),
-            (Status.EMPLOYEE_ACCEPTED, 5, "Sent her a LinkedIn DM"),
-            (Status.NO_RESPONSE, 2, "No reply yet, will nudge next week"),
+            (Status.REQUESTED, 11, None),
+            (Status.EMPLOYEE_ACCEPTED, 10, "Sent her a LinkedIn DM"),
         ],
     ),
     (

@@ -16,7 +16,6 @@ from app.services.lifecycle import DeclineReason, Status
             None,
         ),
         ("he passed, happy where he is", Status.EMPLOYEE_ACCEPTED, Status.CANDIDATE_DECLINED, None),
-        ("no reply yet, I'll nudge again", Status.EMPLOYEE_ACCEPTED, Status.NO_RESPONSE, None),
         (
             "honestly I barely know him",
             Status.REQUESTED,

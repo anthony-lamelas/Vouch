@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import uuid
 from collections.abc import Iterable
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -18,7 +19,7 @@ from app.schemas import (
     RequestDetail,
     RequestSummary,
 )
-from app.services.lifecycle import LABELS, TRANSITIONS, Status
+from app.services.lifecycle import LABELS, STALE_AFTER_DAYS, TRANSITIONS, Status
 from app.services.referrals import shared_history
 
 
@@ -61,7 +62,18 @@ def actor_label(actor: str, employees: dict[uuid.UUID, str]) -> str:
     return actor
 
 
+def waiting_days(r: ReferralRequest, now: datetime | None = None) -> int | None:
+    """Days the candidate has been waited on since the employee agreed to reach out."""
+    if r.status != Status.EMPLOYEE_ACCEPTED.value:
+        return None
+    since = next(
+        (e.created_at for e in reversed(r.events) if e.to_status == r.status), r.updated_at
+    )
+    return ((now or datetime.now(UTC)) - since).days
+
+
 def request_summary(r: ReferralRequest) -> RequestSummary:
+    days = waiting_days(r)
     return RequestSummary(
         id=r.id,
         status=Status(r.status),
@@ -73,6 +85,8 @@ def request_summary(r: ReferralRequest) -> RequestSummary:
         created_at=r.created_at,
         updated_at=r.updated_at,
         last_event_at=r.events[-1].created_at if r.events else None,
+        days_waiting=days,
+        stale=days is not None and days >= STALE_AFTER_DAYS,
     )
 
 

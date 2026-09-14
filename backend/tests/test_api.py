@@ -268,6 +268,26 @@ def test_slack_free_text_reply_updates_status(client: TestClient, db: Session) -
     ]
 
 
+def test_stale_flag_after_seven_days(client: TestClient, db: Session) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from app.models import ReferralEvent
+
+    req = db.scalars(
+        select(ReferralRequest).where(ReferralRequest.status == "employee_accepted")
+    ).first()
+    assert req is not None
+    accepted = next(e for e in req.events if e.to_status == "employee_accepted")
+    accepted.created_at = datetime.now(UTC) - timedelta(days=9)
+    db.commit()
+    body = client.get(f"/api/requests/{req.id}").json()
+    assert body["stale"] is True and body["days_waiting"] == 9
+    fresh = db.scalars(select(ReferralRequest).where(ReferralRequest.status == "requested")).first()
+    assert fresh is not None
+    assert client.get(f"/api/requests/{fresh.id}").json()["stale"] is False
+    assert isinstance(accepted, ReferralEvent)
+
+
 def test_outreach_and_stats(client: TestClient) -> None:
     items = client.get("/api/outreach").json()
     assert items and items[0]["message"]["body"]

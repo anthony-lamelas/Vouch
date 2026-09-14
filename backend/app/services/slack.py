@@ -19,21 +19,18 @@ BUTTONS: dict[str, tuple[Status, DeclineReason | None, str | None]] = {
     "vouch_decline": (Status.EMPLOYEE_DECLINED, None, None),
     "vouch_interested": (Status.CANDIDATE_INTERESTED, None, "primary"),
     "vouch_candidate_declined": (Status.CANDIDATE_DECLINED, None, None),
-    "vouch_no_response": (Status.NO_RESPONSE, None, None),
 }
 BUTTON_TEXT: dict[str, str] = {
     "vouch_accept": "Yes, I'll refer them",
     "vouch_decline": "No, not this one",
     "vouch_interested": "They're interested",
     "vouch_candidate_declined": "They passed",
-    "vouch_no_response": "No reply yet",
 }
 _STATUS_TO_BUTTONS: dict[Status, list[str]] = {
     Status.EMPLOYEE_ACCEPTED: ["vouch_accept"],
     Status.EMPLOYEE_DECLINED: ["vouch_decline"],
     Status.CANDIDATE_INTERESTED: ["vouch_interested"],
     Status.CANDIDATE_DECLINED: ["vouch_candidate_declined"],
-    Status.NO_RESPONSE: ["vouch_no_response"],
 }
 
 

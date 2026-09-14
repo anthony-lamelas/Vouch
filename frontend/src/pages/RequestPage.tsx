@@ -69,6 +69,12 @@ function RequestView({ r }: { r: RequestDetail }) {
         subtitle={
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <StatusPill status={r.status} />
+            {r.stale ? (
+              <span className="text-[12.5px] font-medium text-amber-700">
+                No reply from {contactFirst} in {r.days_waiting} days. Nudge{' '}
+                {r.employee.full_name.split(' ')[0]} in Slack, or close the request.
+              </span>
+            ) : null}
             <span className="text-[12.5px]">
               Requested by {r.requested_by} · {formatDate(r.created_at)} · last activity{' '}
               {formatRelative(r.last_event_at ?? r.updated_at)}

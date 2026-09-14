@@ -8,18 +8,16 @@ export const STATUS_ORDER: readonly Status[] = [
   'employee_declined',
   'candidate_interested',
   'candidate_declined',
-  'no_response',
   'closed',
 ];
 
 /** Labels are written from the recruiter's point of view. Keep in sync with backend LABELS. */
 export const STATUS_LABELS: Record<Status, string> = {
   requested: 'Waiting on employee',
-  employee_accepted: 'Employee reaching out',
+  employee_accepted: 'Employee reached out',
   employee_declined: 'Employee passed',
   candidate_interested: 'Candidate interested',
   candidate_declined: 'Candidate passed',
-  no_response: 'No reply yet',
   closed: 'Closed',
 };
 
@@ -29,7 +27,6 @@ export const STATUS_TONES: Record<Status, Tone> = {
   employee_declined: 'negative',
   candidate_interested: 'positive',
   candidate_declined: 'negative',
-  no_response: 'warning',
   closed: 'neutral',
 };
 
@@ -46,8 +43,6 @@ export function eventSentence(from: Status | null, to: Status, contactFirstName:
       return `reports ${contactFirstName} is interested`;
     case 'candidate_declined':
       return `reports ${contactFirstName} passed`;
-    case 'no_response':
-      return `reports no reply from ${contactFirstName}`;
     case 'closed':
       return 'closed the request';
   }
@@ -56,3 +51,6 @@ export function eventSentence(from: Status | null, to: Status, contactFirstName:
 export function isStatus(value: string): value is Status {
   return (STATUS_ORDER as readonly string[]).includes(value);
 }
+
+/** Days after the employee agreed to reach out before silence is flagged. Mirrors the backend. */
+export const STALE_AFTER_DAYS = 7;

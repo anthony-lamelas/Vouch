@@ -15,11 +15,10 @@ const stats: Stats = {
   requests_active: 1,
   by_status: [
     { status: 'requested', label: 'Waiting on employee', count: 0 },
-    { status: 'employee_accepted', label: 'Employee reaching out', count: 0 },
+    { status: 'employee_accepted', label: 'Employee reached out', count: 0 },
     { status: 'employee_declined', label: 'Employee passed', count: 0 },
     { status: 'candidate_interested', label: 'Candidate interested', count: 1 },
     { status: 'candidate_declined', label: 'Candidate passed', count: 0 },
-    { status: 'no_response', label: 'No reply yet', count: 0 },
     { status: 'closed', label: 'Closed', count: 1 },
   ],
   slack_enabled: false,
@@ -66,6 +65,8 @@ const page: RequestPage = {
       created_at: '2026-09-01T10:00:00Z',
       updated_at: '2026-09-02T10:00:00Z',
       last_event_at: '2026-09-02T10:00:00Z',
+      days_waiting: null,
+      stale: false,
     },
     {
       id: 'req-new',
@@ -78,6 +79,8 @@ const page: RequestPage = {
       created_at: '2026-09-10T10:00:00Z',
       updated_at: '2026-09-11T10:00:00Z',
       last_event_at: '2026-09-11T10:00:00Z',
+      days_waiting: null,
+      stale: false,
     },
   ],
 };
