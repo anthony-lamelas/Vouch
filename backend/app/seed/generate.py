@@ -83,9 +83,22 @@ def _weighted(rng: random.Random, weights: dict[str, int]) -> str:
     return rng.choices(keys, weights=[weights[k] for k in keys], k=1)[0]
 
 
-def _company(rng: random.Random, exclude: set[str] | None = None) -> str:
+def _home_tier(rng: random.Random) -> int:
+    """Careers cluster within a tier band; this is the band a person mostly moves within."""
+    return rng.choices([1, 2, 3], weights=[35, 40, 25], k=1)[0]
+
+
+def _company(
+    rng: random.Random, exclude: set[str] | None = None, home_tier: int | None = None
+) -> str:
     exclude = exclude or set()
-    tier = rng.choices([1, 2, 3], weights=[35, 40, 25], k=1)[0]
+    if home_tier is None:
+        tier = _home_tier(rng)
+    elif rng.random() < 0.8:
+        tier = home_tier
+    else:
+        # One step up or down, never a jump across the whole ladder.
+        tier = rng.choice([t for t in (home_tier - 1, home_tier + 1) if 1 <= t <= 3])
     options = [c for c, t in pools.COMPANY_TIERS.items() if t == tier and c not in exclude]
     return rng.choice(options)
 
@@ -129,12 +142,17 @@ def _career(
     bounds = [0.0, *cuts, 1.0]
     experiences: list[dict[str, Any]] = []
     used: set[str] = set()
+    home_tier = _home_tier(rng)
     span = (finish - start_career).days
     for i in range(n_jobs):
         s = start_career + timedelta(days=int(bounds[i] * span))
         e = start_career + timedelta(days=int(bounds[i + 1] * span))
         is_last = i == n_jobs - 1
-        company = current_company if is_last and current_company else _company(rng, used)
+        company = (
+            current_company
+            if is_last and current_company
+            else _company(rng, used, home_tier=home_tier)
+        )
         used.add(company)
         # Seniority rises through the career.
         level_cap = (
