@@ -17,6 +17,7 @@ import { ProfileBlocks } from '../components/ProfileBlocks';
 import { StatusPill } from '../components/StatusPill';
 import { Tabs } from '../components/Tabs';
 import { firstName, formatDate, formatDateTime, formatRelative } from '../lib/format';
+import { reasonDetail } from '../lib/reasons';
 import { STATUS_LABELS, eventSentence } from '../lib/status';
 
 export function RequestPage() {
@@ -286,7 +287,7 @@ function Attributes({ r }: { r: RequestDetail }) {
                   {reason.label}
                 </dt>
                 <dd className="min-w-0 text-[13px] leading-[18px] font-medium text-ink">
-                  {reason.detail ?? '—'}
+                  {reasonDetail(reason, r.contact.current_company) || '—'}
                 </dd>
               </div>
             ))}

@@ -10,6 +10,7 @@ import { XIcon } from '../components/Icons';
 import { SectionTitle } from '../components/PageHeader';
 import { StatusPill } from '../components/StatusPill';
 import { ProfileBlocks } from '../components/ProfileBlocks';
+import { reasonDetail } from '../lib/reasons';
 import { firstName, formatRelative } from '../lib/format';
 
 export function CandidateDrawer({
@@ -109,7 +110,7 @@ export function CandidateDrawer({
               />
             )}
 
-            <WhyList reasons={why} />
+            <WhyList reasons={why} currentCompany={data.current_company} />
 
             <ProfileBlocks
               experiences={data.experiences}
@@ -200,7 +201,13 @@ function ConnectionLine({
   );
 }
 
-function WhyList({ reasons }: { reasons: Reason[] | null }) {
+function WhyList({
+  reasons,
+  currentCompany,
+}: {
+  reasons: Reason[] | null;
+  currentCompany: string;
+}) {
   if (!reasons || reasons.length === 0) return null;
   return (
     <details className="group">
@@ -214,7 +221,7 @@ function WhyList({ reasons }: { reasons: Reason[] | null }) {
         {reasons.map((r, i) => (
           <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-x-4 py-1.5">
             <dt className="font-medium text-ink">{r.label}</dt>
-            <dd className="text-muted">{r.detail ?? ''}</dd>
+            <dd className="text-muted">{reasonDetail(r, currentCompany)}</dd>
           </div>
         ))}
       </dl>

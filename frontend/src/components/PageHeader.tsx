@@ -13,7 +13,7 @@ export function PageHeader({
 }) {
   return (
     <div className="flex h-[52px] items-stretch gap-5 border-b border-line">
-      <h1 className="flex min-w-0 items-center text-[20px] font-semibold leading-none tracking-[-0.01em] text-ink">
+      <h1 className="flex min-w-0 items-center text-[20px] font-semibold leading-[1.35] tracking-[-0.01em] text-ink">
         {title}
       </h1>
       {tabs ? <div className="flex items-stretch">{tabs}</div> : null}
