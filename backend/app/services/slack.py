@@ -99,10 +99,7 @@ def build_request_blocks(
                     {
                         "type": "mrkdwn",
                         "text": (
-                            f"_Demo routing: this would go to {employee.full_name} "
-                            f"({employee.email})"
-                            + (f"; sent to you because it {routing_note}" if routing_note else "")
-                            + "._"
+                            f"_Demo routing: this would go to {employee.full_name} in production._"
                         ),
                     }
                 ],
