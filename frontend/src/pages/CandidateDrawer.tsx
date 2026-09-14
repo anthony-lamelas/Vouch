@@ -203,9 +203,14 @@ function ConnectionLine({
 function WhyList({ reasons }: { reasons: Reason[] | null }) {
   if (!reasons || reasons.length === 0) return null;
   return (
-    <section>
-      <SectionTitle>Why this candidate</SectionTitle>
-      <dl className="divide-y divide-line text-[13px]">
+    <details className="group">
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[13px] font-semibold text-ink [&::-webkit-details-marker]:hidden">
+        <span aria-hidden className="text-muted transition-transform group-open:rotate-90">
+          ›
+        </span>
+        Why this candidate
+      </summary>
+      <dl className="mt-1 divide-y divide-line text-[13px]">
         {reasons.map((r, i) => (
           <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-x-4 py-1.5">
             <dt className="font-medium text-ink">{r.label}</dt>
@@ -213,7 +218,7 @@ function WhyList({ reasons }: { reasons: Reason[] | null }) {
           </div>
         ))}
       </dl>
-    </section>
+    </details>
   );
 }
 
