@@ -11,7 +11,14 @@ from slack_sdk.signature import SignatureVerifier
 
 from app.config import Settings
 from app.models import Employee, ReferralRequest
-from app.services.lifecycle import DECLINE_LABELS, DeclineReason, Status, next_employee_actions
+from app.services.lifecycle import (
+    CANDIDATE_PASS_LABELS,
+    DECLINE_LABELS,
+    CandidatePassReason,
+    DeclineReason,
+    Status,
+    next_employee_actions,
+)
 from app.services.outreach import Drafts, OutreachContext
 
 BUTTONS: dict[str, tuple[Status, DeclineReason | None, str | None]] = {
@@ -189,11 +196,15 @@ def status_blocks(
             )
     if status == Status.CANDIDATE_DECLINED:
         who = f" {employee_first}" if employee_first else ""
+        why = f" Noted: _{note}_." if note else ""
         kept.append(
             {
                 "type": "section",
                 "block_id": "vouch_status",
-                "text": {"type": "mrkdwn", "text": f"No worries, thanks for reaching out{who}."},
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"No worries, thanks for reaching out{who}.{why}",
+                },
             }
         )
     if status == Status.EMPLOYEE_DECLINED:
@@ -213,34 +224,38 @@ def status_blocks(
 
 
 DECLINE_MODAL_CALLBACK = "vouch_decline_reason"
+CANDIDATE_PASS_MODAL_CALLBACK = "vouch_candidate_pass_reason"
 
 
-def decline_modal(request_id: str, *, contact_first: str) -> dict[str, Any]:
-    """The 'why not?' form Slack opens when an employee taps No. Reason feeds the timeline."""
-    options = [
-        {
-            "text": {"type": "plain_text", "text": DECLINE_LABELS[reason]},
-            "value": reason.value,
-        }
-        for reason in DeclineReason
-    ]
+def _reason_modal(
+    request_id: str,
+    *,
+    callback_id: str,
+    title: str,
+    question: str,
+    options: list[tuple[str, str]],
+    hint: str,
+) -> dict[str, Any]:
     return {
         "type": "modal",
-        "callback_id": DECLINE_MODAL_CALLBACK,
+        "callback_id": callback_id,
         "private_metadata": request_id,
-        "title": {"type": "plain_text", "text": "No problem"},
+        "title": {"type": "plain_text", "text": title},
         "submit": {"type": "plain_text", "text": "Send"},
         "close": {"type": "plain_text", "text": "Cancel"},
         "blocks": [
             {
                 "type": "input",
                 "block_id": "reason",
-                "label": {"type": "plain_text", "text": f"Why not {contact_first}?"},
+                "label": {"type": "plain_text", "text": question},
                 "element": {
                     "type": "static_select",
                     "action_id": "reason",
                     "placeholder": {"type": "plain_text", "text": "Pick one"},
-                    "options": options,
+                    "options": [
+                        {"text": {"type": "plain_text", "text": label}, "value": value}
+                        for value, label in options
+                    ],
                 },
             },
             {
@@ -253,14 +268,42 @@ def decline_modal(request_id: str, *, contact_first: str) -> dict[str, Any]:
                     "action_id": "detail",
                     "multiline": True,
                     "max_length": 500,
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Helps them decide whether to ask someone else",
-                    },
+                    "placeholder": {"type": "plain_text", "text": hint},
                 },
             },
         ],
     }
+
+
+def decline_modal(request_id: str, *, contact_first: str) -> dict[str, Any]:
+    """The 'why not?' form Slack opens when an employee taps No. Reason feeds the timeline."""
+    return _reason_modal(
+        request_id,
+        callback_id=DECLINE_MODAL_CALLBACK,
+        title="No problem",
+        question=f"Why not {contact_first}?",
+        options=[(r.value, DECLINE_LABELS[r]) for r in DeclineReason],
+        hint="Helps them decide whether to ask someone else",
+    )
+
+
+def candidate_pass_modal(request_id: str, *, contact_first: str) -> dict[str, Any]:
+    """The form Slack opens when the employee reports the candidate passed."""
+    return _reason_modal(
+        request_id,
+        callback_id=CANDIDATE_PASS_MODAL_CALLBACK,
+        title="No worries",
+        question=f"What did {contact_first} say?",
+        options=[(r.value, CANDIDATE_PASS_LABELS[r]) for r in CandidatePassReason],
+        hint="Worth revisiting in a few months? Anything else they mentioned?",
+    )
+
+
+def _note(label: str, other: str, detail: str) -> str:
+    detail = detail.strip()
+    if not detail:
+        return label
+    return detail if label == other else f"{label}: {detail}"
 
 
 def decline_note(reason: str, detail: str) -> str:
@@ -269,10 +312,15 @@ def decline_note(reason: str, detail: str) -> str:
         label = DECLINE_LABELS[DeclineReason(reason)]
     except ValueError:
         label = DECLINE_LABELS[None]
-    detail = detail.strip()
-    if not detail:
-        return label
-    return detail if label == DECLINE_LABELS[DeclineReason.OTHER] else f"{label}: {detail}"
+    return _note(label, DECLINE_LABELS[DeclineReason.OTHER], detail)
+
+
+def candidate_pass_note(reason: str, detail: str) -> str:
+    try:
+        label = CANDIDATE_PASS_LABELS[CandidatePassReason(reason)]
+    except ValueError:
+        label = CANDIDATE_PASS_LABELS[None]
+    return _note(label, CANDIDATE_PASS_LABELS[CandidatePassReason.OTHER], detail)
 
 
 class Notifier(Protocol):

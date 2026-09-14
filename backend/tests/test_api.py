@@ -399,6 +399,38 @@ def test_interested_sends_the_booking_link(client: TestClient, db: Session) -> N
     assert "to schedule a screen with" in last["note"]
 
 
+def test_slack_candidate_pass_form_records_the_reason(client: TestClient, db: Session) -> None:
+    req = _fresh_request(client, db)
+    client.post(f"/api/requests/{req.id}/transition", json={"to_status": "employee_accepted"})
+    payload = {
+        "type": "view_submission",
+        "user": {"id": "U123"},
+        "view": {
+            "callback_id": "vouch_candidate_pass_reason",
+            "private_metadata": str(req.id),
+            "state": {
+                "values": {
+                    "reason": {"reason": {"selected_option": {"value": "timing"}}},
+                    "detail": {
+                        "detail": {"value": "Just started a new job; try again in the spring."}
+                    },
+                }
+            },
+        },
+    }
+    body = "payload=" + quote(json.dumps(payload))
+    r = client.post("/api/slack/interactions", content=body, headers=_slack_headers(body))
+    assert r.status_code == 200
+    db.expire_all()
+    db.refresh(req)
+    assert req.status == "closed"
+    notes = [e.note for e in req.events][-2:]
+    assert notes == [
+        "Bad timing, maybe later: Just started a new job; try again in the spring.",
+        "Closed automatically: candidate passed",
+    ]
+
+
 def test_candidate_pass_auto_closes(client: TestClient) -> None:
     role = _first_role(client, "data")
     page = client.get(f"/api/roles/{role['id']}/candidates", params={"limit": 40}).json()

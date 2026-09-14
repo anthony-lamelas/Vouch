@@ -339,11 +339,12 @@ class ReferralService:
         return self.get(req.id)
 
     def _auto_close(self, req: ReferralRequest, note: str) -> None:
+        """Close on the system's behalf. The Slack card is left as the previous step rendered
+        it: it already has no buttons, and re-rendering it as CLOSED would erase the thanks."""
         current = Status(req.status)
         req.status = Status.CLOSED.value
         req.closed_outcome = note
         self._event(req, current, Status.CLOSED, "system", note)
-        self._update_slack(req, Status.CLOSED)
 
     def nudge(self, request_id: uuid.UUID, *, actor_email: str, actor_name: str) -> ReferralRequest:
         """Ping the employee again about a request they agreed to act on."""

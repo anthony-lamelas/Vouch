@@ -23,7 +23,10 @@ from app.services.referrals import (
 )
 from app.services.slack import (
     BUTTONS,
+    CANDIDATE_PASS_MODAL_CALLBACK,
     DECLINE_MODAL_CALLBACK,
+    candidate_pass_modal,
+    candidate_pass_note,
     decline_modal,
     decline_note,
     get_notifier,
@@ -79,17 +82,21 @@ async def interactions(request: Request) -> Response:
             target, reason, _ = mapping
             request_id = uuid.UUID(str(action.get("value")))
             req = service.get(request_id)
+            # A "no" from either side asks why first; the transition is recorded when the form
+            # is submitted. If the form can't open (no trigger, Slack off), record it plainly.
+            contact_first = req.contact.full_name.split(" ")[0]
+            reason_form: dict[str, Any] | None = None
             if target == Status.EMPLOYEE_DECLINED and Status(req.status) == Status.REQUESTED:
-                # Ask why first; the decline is recorded when the modal is submitted. If the
-                # modal can't open (no trigger, Slack off), record a plain decline instead.
-                opened = service.notifier.open_view(
-                    trigger_id=str(payload.get("trigger_id", "")),
-                    view=decline_modal(
-                        str(req.id), contact_first=req.contact.full_name.split(" ")[0]
-                    ),
-                )
-                if opened:
-                    continue
+                reason_form = decline_modal(str(req.id), contact_first=contact_first)
+            elif (
+                target == Status.CANDIDATE_DECLINED
+                and Status(req.status) == Status.EMPLOYEE_ACCEPTED
+            ):
+                reason_form = candidate_pass_modal(str(req.id), contact_first=contact_first)
+            if reason_form is not None and service.notifier.open_view(
+                trigger_id=str(payload.get("trigger_id", "")), view=reason_form
+            ):
+                continue
             try:
                 service.transition(
                     request_id, to_status=target, actor=employee_actor(req.employee), reason=reason
@@ -103,7 +110,12 @@ async def interactions(request: Request) -> Response:
 
 def _handle_view_submission(payload: dict[str, Any], settings: Settings) -> None:
     view: dict[str, Any] = payload.get("view", {})
-    if view.get("callback_id") != DECLINE_MODAL_CALLBACK:
+    callback = view.get("callback_id")
+    if callback == DECLINE_MODAL_CALLBACK:
+        target, make_note = Status.EMPLOYEE_DECLINED, decline_note
+    elif callback == CANDIDATE_PASS_MODAL_CALLBACK:
+        target, make_note = Status.CANDIDATE_DECLINED, candidate_pass_note
+    else:
         return
     values: dict[str, Any] = view.get("state", {}).get("values", {})
     reason = str(
@@ -117,12 +129,12 @@ def _handle_view_submission(payload: dict[str, Any], settings: Settings) -> None
         try:
             service.transition(
                 request_id,
-                to_status=Status.EMPLOYEE_DECLINED,
+                to_status=target,
                 actor=employee_actor(req.employee),
-                note=decline_note(reason, detail),
+                note=make_note(reason, detail),
             )
         except IllegalTransitionError as exc:
-            log.info("ignored stale decline form: %s", exc)
+            log.info("ignored stale form: %s", exc)
     finally:
         service.db.close()
 

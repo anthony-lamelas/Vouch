@@ -84,7 +84,7 @@ def draft_ask(ctx: OutreachContext) -> str:
     return (
         f"Hi {ctx.employee_first_name}, would you be willing to reach out to "
         f"{ctx.contact_full_name} ({ctx.contact_title} at {ctx.contact_company}) and refer "
-        f"them for the {ctx.role_title} role?{history} If you're up for it, tap Yes below, ping "
+        f"them for the {ctx.role_title} role?{history} If you're up for it, respond below, ping "
         f"{ctx.contact_first_name}, and let me know here what they say.{signoff}"
     )
 
