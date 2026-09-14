@@ -15,13 +15,11 @@ import { firstName, formatRelative } from '../lib/format';
 export function CandidateDrawer({
   contactId,
   roleId,
-  roleTitle,
   reasons,
   onClose,
 }: {
   contactId: string;
   roleId: string;
-  roleTitle: string;
   /** Match signals from the candidate row, when the drawer was opened from one. */
   reasons?: Reason[];
   onClose: () => void;
@@ -105,7 +103,6 @@ export function CandidateDrawer({
                 contact={data}
                 connections={connections}
                 roleId={roleId}
-                roleTitle={roleTitle}
                 create={create}
                 employeeId={employeeId}
                 preview={preview}
@@ -239,7 +236,6 @@ function Ask({
   contact,
   connections,
   roleId,
-  roleTitle,
   create,
   employeeId,
   preview,
@@ -247,7 +243,6 @@ function Ask({
   contact: ContactDetail;
   connections: ConnectionOut[];
   roleId: string;
-  roleTitle: string;
   create: ReturnType<typeof useCreateRequest>;
   employeeId: string | undefined;
   preview: ReturnType<typeof useAskPreview>;
@@ -300,20 +295,7 @@ function Ask({
         <h2 id="ask-title" className="text-[13px] font-semibold text-ink">
           Ask
         </h2>
-        <span className="truncate text-[12px] tracking-normal text-muted">
-          for {roleTitle || 'this role'}
-        </span>
       </div>
-
-      <p className="text-[13px]">
-        <span className="text-muted">Asking </span>
-        <span className="font-medium text-ink">{chosen.employee.full_name}</span>
-        <span className="text-[12px] tracking-normal text-muted">
-          {' '}
-          {chosen.employee.title}
-          {chosen.employee.team ? `, ${chosen.employee.team}` : ''}
-        </span>
-      </p>
 
       <label className="mt-3 block">
         <span className="mb-1 flex items-baseline justify-between text-[12px] tracking-normal">
