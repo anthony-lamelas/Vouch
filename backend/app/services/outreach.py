@@ -93,7 +93,7 @@ def draft_casual(ctx: OutreachContext) -> str:
         f"Hey {ctx.contact_first_name}! I hope you are doing well. We're hiring "
         f"{article(ctx.role_title)} {ctx.role_title} here at Cognition, and you seem like a "
         f"great fit. Zero pressure, but if you're interested, please let me know, and we can "
-        f"get the interview process going!"
+        f"get the interview process going!\n\nHere's the role: {ctx.role_url}"
     )
 
 
