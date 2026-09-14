@@ -3,7 +3,7 @@
 Warm referral sourcing for Cognition. VOUCH turns employees' networks into a searchable candidate pool for every open role, lets a recruiter ask the best-connected employee for an intro in one click, and tracks the outcome as the employee replies in Slack.
 
 - **Live demo:** https://vouch-9pfl.onrender.com
-- **Spec and decisions:** [`docs/SPEC.md`](docs/SPEC.md)
+- **Spec:** [`docs/SPEC.md`](docs/SPEC.md) · **Decisions:** [`docs/DECISIONS.md`](docs/DECISIONS.md)
 - **Stack:** FastAPI + SQLAlchemy 2.0 + Alembic on Postgres (Supabase), React 18 + TypeScript + Vite, Slack Block Kit, deployed as one Docker service on Render. Roles are real (Cognition's public Ashby board); people are synthetic.
 
 ## How it works
