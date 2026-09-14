@@ -70,10 +70,6 @@ def build_request_blocks(
     demo_routed: bool,
     app_url: str,
 ) -> list[dict[str, Any]]:
-    reasons = "\n".join(f"• {r}" for r in ctx.fit_reasons[:4]) or "• Strong profile match"
-    history = (
-        f"\nYou're the closest connection: _{ctx.shared_history}_." if ctx.shared_history else ""
-    )
     blocks: list[dict[str, Any]] = [
         {
             "type": "header",
@@ -86,12 +82,11 @@ def build_request_blocks(
                 "text": (
                     f"*{request.requested_by}* would like to refer *{ctx.contact_full_name}* "
                     f"({ctx.contact_title} at {ctx.contact_company}) for "
-                    f"*<{ctx.role_url}|{ctx.role_title}>* · {ctx.role_team} · {ctx.role_location}."
-                    f"{history}\n\n*Would you be willing to reach out and refer them?*"
+                    f"*<{ctx.role_url}|{ctx.role_title}>*.\n\n"
+                    "*Would you be willing to reach out and refer them?*"
                 ),
             },
         },
-        {"type": "section", "text": {"type": "mrkdwn", "text": f"*Why they fit*\n{reasons}"}},
         {
             "type": "section",
             "text": {
