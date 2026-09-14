@@ -10,7 +10,7 @@ const BAND: Record<BandTone, { row: string; dot: string }> = {
   closed: { row: 'bg-closed-bg text-closed-text', dot: 'bg-closed-dot' },
 };
 
-/** Linear-style group header: a full-width 32px band inside the table, tinted per stage. */
+/** Linear-style group header: a full-width 40px band inside the table, tinted per stage. */
 export function GroupBand({
   title,
   count,
@@ -27,9 +27,9 @@ export function GroupBand({
     <tr>
       <th colSpan={colSpan} scope="rowgroup" className={`band ${cls.row}`}>
         <span className="inline-flex items-center gap-2">
-          <span aria-hidden className={`size-1.5 rounded-full ${cls.dot}`} />
+          <span aria-hidden className={`size-2 rounded-full ${cls.dot}`} />
           {title}
-          <span className="font-medium tnum">{count}</span>
+          <span className="text-[16px] font-medium tnum opacity-80">{count}</span>
         </span>
       </th>
     </tr>

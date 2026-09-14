@@ -29,14 +29,14 @@ export function buttonClass(variant: ButtonVariant, size: ButtonSize, extra = ''
 
 /** Outlined 22px chip; `on` fills it ice/cobalt. */
 export function chipClass(on: boolean): string {
-  return `inline-flex h-[22px] max-w-full items-center rounded-tag border px-2 text-[12px] font-medium tracking-normal whitespace-nowrap ${
+  return `inline-flex h-7 max-w-full items-center rounded-tag border px-2.5 text-[13.5px] font-medium tracking-normal whitespace-nowrap ${
     on ? 'border-ice bg-ice text-cobalt' : 'border-line bg-canvas text-carbon'
   }`;
 }
 
 /** Linear-style filter pill: "+ Company", or a toggle that fills when on. */
 export function filterPillClass(on: boolean): string {
-  return `inline-flex h-7 items-center gap-1 rounded-tag border px-2 text-[12px] font-medium tracking-normal transition-colors ${
+  return `inline-flex h-8 items-center gap-1 rounded-tag border px-2.5 text-[14px] font-medium tracking-normal transition-colors ${
     on
       ? 'border-ice bg-ice text-cobalt'
       : 'border-line bg-canvas text-carbon hover:border-caption hover:text-ink'
