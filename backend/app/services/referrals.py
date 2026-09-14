@@ -335,6 +335,10 @@ class ReferralService:
             )
         if to_status == Status.CANDIDATE_DECLINED:
             self._auto_close(req, "Closed automatically: candidate passed")
+        elif to_status == Status.EMPLOYEE_DECLINED and not other_connections(self.db, req):
+            self._auto_close(
+                req, "Closed automatically: no other colleague is connected to this person"
+            )
         self.db.commit()
         return self.get(req.id)
 

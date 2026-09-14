@@ -111,6 +111,11 @@ export function useRequests(params: RequestListParams) {
         limit: 200,
       }),
     placeholderData: (prev) => prev,
+    // Requests change from Slack, outside the browser: keep lists (and the sidebar's
+    // "Needs you") fresh without a reload.
+    staleTime: 0,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -118,6 +123,9 @@ export function useRequest(id: string) {
   return useQuery({
     queryKey: keys.request(id),
     queryFn: () => api.get<RequestDetail>(`/requests/${id}`),
+    staleTime: 0,
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
   });
 }
 

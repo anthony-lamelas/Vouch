@@ -157,7 +157,7 @@ def seed_database(db: Session, settings: Settings, *, prefer_live_roles: bool = 
     postings, source = fetch_or_snapshot(prefer_live=prefer_live_roles)
     sync_roles(db, postings, source=source, settings=settings)
     scores = recompute_match_scores(db)
-    requests = seed_demo_requests(db)
+    requests = seed_demo_requests(db, exclude_owner=settings.demo_recruiter_email)
     db.commit()
     return SeedReport(
         employees=len(graph.employees),
@@ -233,12 +233,18 @@ _SCENARIOS: tuple[tuple[str, list[tuple[Status, int, str | None]]], ...] = (
 )
 
 
-def _pick_role(db: Session, family: str, used: set[uuid.UUID]) -> Role | None:
+def _pick_role(
+    db: Session, family: str, used: set[uuid.UUID], *, exclude_owner: str = ""
+) -> Role | None:
+    """A role for a demo scenario. The demo login's own roles are left untouched so that
+    account starts with an empty pipeline and nothing in 'Needs you'."""
     stmt = (
         select(Role)
         .where(Role.is_active.is_(True), Role.job_family == family, Role.id.not_in(used))
         .order_by(Role.title)
     )
+    if exclude_owner:
+        stmt = stmt.where(Role.owner_email != exclude_owner)
     return db.scalars(stmt).first()
 
 
@@ -265,14 +271,14 @@ def _pick_contact(
     return db.scalars(stmt).first()
 
 
-def seed_demo_requests(db: Session) -> int:
+def seed_demo_requests(db: Session, *, exclude_owner: str = "") -> int:
     now = datetime.now(UTC)
     generator = TemplateGenerator()
     used_roles: set[uuid.UUID] = set()
     used_contacts: set[uuid.UUID] = set()
     created = 0
     for family, steps in _SCENARIOS:
-        role = _pick_role(db, family, used_roles)
+        role = _pick_role(db, family, used_roles, exclude_owner=exclude_owner)
         if role is None:
             continue
         rerouted = any(s == Status.EMPLOYEE_DECLINED for s, _, _ in steps)

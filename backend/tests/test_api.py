@@ -64,7 +64,7 @@ def test_role_ownership_and_mine_filters(client: TestClient) -> None:
     assert {r["owner_name"] for r in others} >= {"Dana Whitfield", "Chris Nakamura"}
 
     my_requests = client.get("/api/requests", params={"mine": True}).json()
-    assert my_requests["total"] >= 1
+    assert my_requests["total"] == 0  # the seed leaves the demo login's pipeline empty
     assert all(item["is_mine"] for item in my_requests["items"])
     everything = client.get("/api/requests").json()
     assert everything["total"] > my_requests["total"]
@@ -303,6 +303,36 @@ def test_decline_waits_for_the_recruiter_then_reroutes(client: TestClient, db: S
     assert len(body["messages"]) == 2
     # Only a parked request can be re-routed.
     assert client.post(f"/api/requests/{created['id']}/reroute", json={}).status_code == 409
+
+
+def test_decline_with_nobody_else_connected_closes(client: TestClient, db: Session) -> None:
+    role = _first_role(client, "engineering")
+    single = (
+        select(Connection.contact_id)
+        .group_by(Connection.contact_id)
+        .having(func.count() == 1)
+        .subquery()
+    )
+    open_ids = select(ReferralRequest.contact_id).where(ReferralRequest.status != "closed")
+    contact_id = db.scalar(
+        select(Contact.id)
+        .join(MatchScore, MatchScore.contact_id == Contact.id)
+        .join(single, single.c.contact_id == Contact.id)
+        .where(MatchScore.role_id == uuid.UUID(role["id"]), Contact.id.not_in(open_ids))
+        .order_by(MatchScore.score.desc())
+    )
+    assert contact_id is not None
+    created = client.post(
+        "/api/requests", json={"contact_id": str(contact_id), "role_id": role["id"]}
+    ).json()
+    body = client.post(
+        f"/api/requests/{created['id']}/transition",
+        json={"to_status": "employee_declined", "reason": "not_a_fit"},
+    ).json()
+    assert body["status"] == "closed"
+    assert body["alternatives"] == []
+    assert [e["to_status"] for e in body["events"]] == ["requested", "employee_declined", "closed"]
+    assert body["closed_outcome"].startswith("Closed automatically: no other colleague")
 
 
 def test_reroute_to_a_chosen_colleague(client: TestClient, db: Session) -> None:
