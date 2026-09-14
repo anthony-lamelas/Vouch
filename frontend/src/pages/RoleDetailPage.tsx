@@ -3,28 +3,39 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useCandidates, useFilterOptions, useRequests, useRole } from '../api/queries';
 import type { CandidateOut, TieredName } from '../api/types';
 import { Button } from '../components/Button';
-import { RemovableChip } from '../components/Chip';
+import { Chip, RemovableChip } from '../components/Chip';
 import { Drawer } from '../components/Drawer';
 import { EmptyState, ErrorState, Skeleton, TableSkeleton } from '../components/EmptyState';
 import { ExternalIcon } from '../components/Icons';
-import { MultiSelect } from '../components/MultiSelect';
+import { MultiSelect, type Option } from '../components/MultiSelect';
 import { PageHeader } from '../components/PageHeader';
 import { Pagination } from '../components/Pagination';
 import { StatusPill } from '../components/StatusPill';
-import { StrengthBar } from '../components/StrengthBar';
 import { TierBadge } from '../components/TierBadge';
 import {
+  TIERS,
   activeFilterCount,
   appliedFilterChips,
   filtersReducer,
   parseFilters,
   serializeFilters,
   type FilterAction,
+  type TierField,
 } from '../lib/candidateFilters';
-import { buttonClass, chipClass, filterPillClass } from '../lib/classes';
+import { buttonClass } from '../lib/classes';
 import { firstName, formatCount, titleCase } from '../lib/format';
 import { whyLine } from '../lib/reasons';
 import { CandidateDrawer } from './CandidateDrawer';
+
+/** "Tier 1 / 2 / 3" rows pinned above the company and school lists. */
+const TIER_OPTIONS: Option[] = TIERS.map((t) => ({
+  value: String(t),
+  label: `Tier ${t}`,
+  tier: t,
+}));
+
+/** Schools pinned to the very top of their list regardless of tier. */
+const PINNED_SCHOOLS = ['NYU'];
 
 function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value);
@@ -82,8 +93,18 @@ export function RoleDetailPage() {
   const items = page?.items ?? [];
   const nFilters = activeFilterCount(filters);
   const chips = appliedFilterChips(filters);
-  const tier1Only = filters.companyTier === 1;
   const requestItems = roleRequests.data?.items ?? [];
+  const companyOptions = useMemo(() => toOptions(options.data?.companies), [options.data]);
+  const schoolOptions = useMemo(
+    () => toOptions(options.data?.schools, PINNED_SCHOOLS),
+    [options.data],
+  );
+  const tierGroup = (field: TierField) => ({
+    options: TIER_OPTIONS,
+    selected: filters[field].map(String),
+    onChange: (values: string[]) =>
+      dispatch({ type: 'setTiers', field, tiers: values.map(Number) }),
+  });
 
   return (
     <div>
@@ -122,21 +143,9 @@ export function RoleDetailPage() {
           </p>
           {role.data.required_skills.length > 0 ? (
             <div className="mt-2 flex flex-wrap gap-1" aria-label="Required skills">
-              {role.data.required_skills.map((s) => {
-                const on = filters.skills.includes(s);
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => dispatch({ type: 'toggle', field: 'skills', value: s })}
-                    className={`${chipClass(on)} ${on ? '' : 'hover:bg-paper'}`}
-                    title={on ? `Stop filtering by ${s}` : `Only candidates with ${s}`}
-                    aria-pressed={on}
-                  >
-                    {s}
-                  </button>
-                );
-              })}
+              {role.data.required_skills.map((s) => (
+                <Chip key={s}>{s}</Chip>
+              ))}
             </div>
           ) : null}
         </>
@@ -180,30 +189,18 @@ export function RoleDetailPage() {
         />
         <MultiSelect
           label="Company"
-          options={toOptions(options.data?.companies)}
+          options={companyOptions}
           selected={filters.companies}
           onChange={(values) => dispatch({ type: 'setList', field: 'companies', values })}
+          pinned={tierGroup('companyTiers')}
         />
         <MultiSelect
           label="School"
-          options={toOptions(options.data?.schools)}
+          options={schoolOptions}
           selected={filters.schools}
           onChange={(values) => dispatch({ type: 'setList', field: 'schools', values })}
+          pinned={tierGroup('schoolTiers')}
         />
-        <MultiSelect
-          label="Skill"
-          options={(options.data?.skills ?? []).map((s) => ({ value: s }))}
-          selected={filters.skills}
-          onChange={(values) => dispatch({ type: 'setList', field: 'skills', values })}
-        />
-        <button
-          type="button"
-          aria-pressed={tier1Only}
-          onClick={() => dispatch({ type: 'setTier', tier: tier1Only ? null : 1 })}
-          className={filterPillClass(tier1Only)}
-        >
-          Tier-1 only
-        </button>
         {chips.length > 0 ? (
           <>
             <span aria-hidden className="mx-1 h-4 w-px bg-line" />
@@ -307,8 +304,15 @@ export function RoleDetailPage() {
   );
 }
 
-function toOptions(list: TieredName[] | undefined) {
-  return (list ?? []).map((t) => ({ value: t.name, tier: t.tier }));
+/** Tier 1 first, then by name; anything in `pinnedFirst` jumps to the very top. */
+function toOptions(list: TieredName[] | undefined, pinnedFirst: string[] = []): Option[] {
+  const rank = (t: TieredName) => {
+    const i = pinnedFirst.indexOf(t.name);
+    return i === -1 ? pinnedFirst.length : i;
+  };
+  return [...(list ?? [])]
+    .sort((a, b) => rank(a) - rank(b) || a.tier - b.tier || a.name.localeCompare(b.name))
+    .map((t) => ({ value: t.name, tier: t.tier }));
 }
 
 function CandidateRow({
@@ -367,38 +371,28 @@ function CandidateRow({
                 </span>
               ) : null}
             </div>
-            <div className="flex items-center gap-2 text-[12px] leading-4 tracking-normal text-muted">
-              <StrengthBar value={top.strength} />
-              {top.shared_history ? <span className="truncate">{top.shared_history}</span> : null}
-            </div>
+            {top.shared_history ? (
+              <div className="truncate text-[12px] leading-4 tracking-normal text-muted">
+                {top.shared_history}
+              </div>
+            ) : null}
           </>
         ) : (
           <span className="text-[13px] text-caption">No one at Cognition knows them</span>
         )}
       </td>
       <td className="text-right">
-        {c.active_request ? (
-          <div className="inline-flex items-center gap-2">
-            <StatusPill status={c.active_request.status} />
-            <Link
-              to={`/requests/${c.active_request.id}`}
-              className="link text-[12px]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              for {c.active_request.role_title}
-            </Link>
-          </div>
-        ) : top ? (
+        {top ? (
           <Button
             variant="primary"
             size="sm"
-            title={`Ask ${top.employee.full_name} to vouch for ${firstName(c.contact.full_name)}`}
+            title={`Request an intro to ${firstName(c.contact.full_name)} via ${top.employee.full_name}`}
             onClick={(e) => {
               e.stopPropagation();
               onOpen();
             }}
           >
-            Ask {firstName(top.employee.full_name)}
+            Request
           </Button>
         ) : (
           <span className="text-[12px] text-caption">No one to ask</span>

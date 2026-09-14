@@ -5,9 +5,22 @@ import { TierBadge } from './TierBadge';
 
 export interface Option {
   value: string;
+  /** Display text when it differs from the value, e.g. "Tier 1" for value "1". */
+  label?: string;
   tier?: number;
   /** How many rows carry this value; shown muted on the right. */
   count?: number;
+}
+
+/** A separately-controlled group shown above the main list, e.g. tiers before companies. */
+export interface PinnedGroup {
+  options: Option[];
+  selected: string[];
+  onChange: (values: string[]) => void;
+}
+
+function matches(o: Option, q: string) {
+  return !q || (o.label ?? o.value).toLowerCase().includes(q) || o.value.toLowerCase().includes(q);
 }
 
 /** Linear-style filter pill: "+ Company" that opens a searchable checkbox list. */
@@ -16,6 +29,7 @@ export function MultiSelect({
   options,
   selected,
   onChange,
+  pinned,
   placeholder = 'Search',
 }: {
   /** Singular noun, e.g. "Company". */
@@ -23,6 +37,7 @@ export function MultiSelect({
   options: Option[];
   selected: string[];
   onChange: (values: string[]) => void;
+  pinned?: PinnedGroup;
   placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -48,20 +63,30 @@ export function MultiSelect({
     };
   }, [open]);
 
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const list = q ? options.filter((o) => o.value.toLowerCase().includes(q)) : options;
-    // Selected first so it is obvious what is applied.
-    return [...list].sort((a, b) => {
-      const sa = selected.includes(a.value) ? 0 : 1;
-      const sb = selected.includes(b.value) ? 0 : 1;
-      return sa - sb;
-    });
-  }, [options, query, selected]);
+  const q = query.trim().toLowerCase();
+  // Callers own the order (tier, then name, with anything pinned first).
+  const visible = useMemo(() => options.filter((o) => matches(o, q)), [options, q]);
+  const pinnedVisible = useMemo(
+    () => (pinned ? pinned.options.filter((o) => matches(o, q)) : []),
+    [pinned, q],
+  );
 
-  const toggle = (value: string) => {
-    onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]);
+  const toggleIn = (list: string[], value: string, emit: (v: string[]) => void) => {
+    emit(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
   };
+
+  const row = (o: Option, checked: boolean, onToggle: () => void) => (
+    <li key={o.value} role="option" aria-selected={checked}>
+      <label className="flex h-7 cursor-pointer items-center gap-2 px-2.5 text-[13px] hover:bg-haze">
+        <input type="checkbox" checked={checked} onChange={onToggle} className="accent-cobalt" />
+        <span className="flex-1 truncate">{o.label ?? o.value}</span>
+        {o.tier !== undefined ? <TierBadge tier={o.tier} /> : null}
+        {o.count !== undefined ? (
+          <span className="text-[12px] tracking-normal text-muted tnum">{o.count}</span>
+        ) : null}
+      </label>
+    </li>
+  );
 
   const lower = label.toLowerCase();
   return (
@@ -94,34 +119,24 @@ export function MultiSelect({
             id={listId}
             role="listbox"
             aria-multiselectable
-            className="max-h-[260px] overflow-auto py-1"
+            className="max-h-[280px] overflow-auto py-1"
           >
-            {visible.length === 0 ? (
-              <li className="px-3 py-1.5 text-[13px] text-muted">No matches</li>
-            ) : (
-              visible.map((o) => {
-                const checked = selected.includes(o.value);
-                return (
-                  <li key={o.value} role="option" aria-selected={checked}>
-                    <label className="flex h-7 cursor-pointer items-center gap-2 px-2.5 text-[13px] hover:bg-haze">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggle(o.value)}
-                        className="accent-cobalt"
-                      />
-                      <span className="flex-1 truncate">{o.value}</span>
-                      {o.tier !== undefined ? <TierBadge tier={o.tier} /> : null}
-                      {o.count !== undefined ? (
-                        <span className="text-[12px] tracking-normal text-muted tnum">
-                          {o.count}
-                        </span>
-                      ) : null}
-                    </label>
-                  </li>
-                );
-              })
+            {pinned
+              ? pinnedVisible.map((o) =>
+                  row(o, pinned.selected.includes(o.value), () =>
+                    toggleIn(pinned.selected, o.value, pinned.onChange),
+                  ),
+                )
+              : null}
+            {pinnedVisible.length > 0 && visible.length > 0 ? (
+              <li role="presentation" aria-hidden className="my-1 border-t border-line" />
+            ) : null}
+            {visible.map((o) =>
+              row(o, selected.includes(o.value), () => toggleIn(selected, o.value, onChange)),
             )}
+            {visible.length === 0 && pinnedVisible.length === 0 ? (
+              <li className="px-3 py-1.5 text-[13px] text-muted">No matches</li>
+            ) : null}
           </ul>
         </div>
       ) : null}

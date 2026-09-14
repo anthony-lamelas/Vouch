@@ -410,7 +410,7 @@ function Ask({
           disabled={!employeeId || !message.trim() || create.isPending}
           onClick={send}
         >
-          {create.isPending ? 'Sending' : `Send to ${chosenFirst}`}
+          {create.isPending ? 'Sending' : 'Send request'}
         </Button>
         {errorText ? (
           <p role="alert" className="text-[12px] text-no-text">
