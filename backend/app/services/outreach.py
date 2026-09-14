@@ -67,7 +67,8 @@ def _casual_history(history: str) -> str:
 def draft_ask(ctx: OutreachContext) -> str:
     """Concise note from the recruiter to the employee asking for the referral."""
     history = (
-        f" You {_casual_history(ctx.shared_history)}, so you seemed like the right person to ask."
+        f" You two {ctx.shared_history[:1].lower()}{ctx.shared_history[1:]}, "
+        "so you seemed like the right person to ask."
         if ctx.shared_history
         else ""
     )
