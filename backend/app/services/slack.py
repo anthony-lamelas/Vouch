@@ -11,7 +11,7 @@ from slack_sdk.signature import SignatureVerifier
 
 from app.config import Settings
 from app.models import Employee, ReferralRequest
-from app.services.lifecycle import LABELS, DeclineReason, Status, next_employee_actions
+from app.services.lifecycle import DeclineReason, Status, next_employee_actions
 from app.services.outreach import Drafts, OutreachContext
 
 BUTTONS: dict[str, tuple[Status, DeclineReason | None, str | None]] = {
@@ -87,18 +87,6 @@ def build_request_blocks(
                 ),
             },
         },
-        {
-            "type": "context",
-            "elements": [
-                {
-                    "type": "mrkdwn",
-                    "text": (
-                        f"Tap a button, or just reply here in plain English. "
-                        f"<{app_url}/requests/{request.id}|View in VOUCH>"
-                    ),
-                }
-            ],
-        },
     ]
     if demo_routed:
         blocks.append(
@@ -132,13 +120,6 @@ def status_blocks(
 ) -> list[dict[str, Any]]:
     """Return a copy of the message blocks reflecting the new status and next buttons."""
     kept = [b for b in blocks if b.get("block_id") not in {"vouch_actions", "vouch_status"}]
-    kept.append(
-        {
-            "type": "context",
-            "block_id": "vouch_status",
-            "elements": [{"type": "mrkdwn", "text": f"*Status:* {LABELS[status]}"}],
-        }
-    )
     buttons = action_buttons(status, request_id)
     if buttons:
         kept.append({"type": "actions", "block_id": "vouch_actions", "elements": buttons})
