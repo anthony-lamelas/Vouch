@@ -74,9 +74,10 @@ def draft_ask(ctx: OutreachContext) -> str:
     )
     signoff = f"\n\nThanks,\n{ctx.recruiter_first_name}" if ctx.recruiter_first_name else ""
     return (
-        f"Hi {ctx.employee_first_name}, would you be willing to refer {ctx.contact_full_name} "
-        f"({ctx.contact_title} at {ctx.contact_company}) for {ctx.role_title}?{history} "
-        f"If yes, just say so and I'll take it from there.{signoff}"
+        f"Hi {ctx.employee_first_name}, would you be willing to reach out to "
+        f"{ctx.contact_full_name} ({ctx.contact_title} at {ctx.contact_company}) and refer "
+        f"them for {ctx.role_title}?{history} If you're up for it, tap Yes below, ping "
+        f"{ctx.contact_first_name}, and let me know here what they say.{signoff}"
     )
 
 
