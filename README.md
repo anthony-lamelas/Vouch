@@ -69,7 +69,7 @@ All settings are environment variables (see [`.env.example`](.env.example)). The
 | `ANTHROPIC_API_KEY`, `OUTREACH_MODE=claude` | Optional Claude-tailored drafts (template fallback) |
 | `ADMIN_TOKEN` | Protects `POST /api/admin/reset-demo` and `POST /api/admin/sync-roles` |
 | `DEMO_RECRUITER_EMAIL`, `DEMO_RECRUITER_NAME` | The demo login: owns the R&D and Customer Engineering roles in the seed and is shown by name (derived from the email unless set) |
-| `DEMO_BOOKING_URL` | The demo recruiter's scheduling link (Google appointment page, Calendly). When the employee reports the candidate is interested, the Slack card gives them a message to pass on with this link so the candidate books a recruiter screen. Per recruiter in the data model (`recruiter.booking_url`) |
+| `DEMO_BOOKING_URL` | Scheduling link (Google appointment page, Calendly) handed to the employee once the candidate is interested, so the candidate books a recruiter screen. Defaults to the demo recruiter's page and applies to every request in the demo; per-recruiter links live on `recruiter.booking_url` |
 
 ## Where the loop ends
 

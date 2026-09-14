@@ -53,9 +53,13 @@ class Settings(BaseSettings):
     )
     demo_recruiter_name: str = ""
     demo_booking_url: str = Field(
-        default="",
-        description="Scheduling link (Google appointment page, Calendly) for the demo recruiter; "
-        "sent to the employee to pass on once the candidate says they're interested",
+        default=(
+            "https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ0iaO8bb3"
+            "Xg_wpdTgl7nsGryF18LK5z-RBIkAVh8Gk11V7VWdLqd9USl_ESwpxlBL2V4H7MUE5Z?gv=true"
+        ),
+        description="Scheduling link sent to the employee to pass on once the candidate says "
+        "they're interested. Used for every recruiter in the demo so any reviewer's request ends "
+        "at the same booking page; per-recruiter links live on recruiter.booking_url",
     )
     demo_employee_email: str = Field(
         default="", description="Email for the seeded 'Bob' employee; defaults to a synthetic one"

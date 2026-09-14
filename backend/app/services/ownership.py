@@ -74,11 +74,9 @@ def display_name(email: str, names: Mapping[str, str]) -> str:
 
 
 def booking_url_for(db: Session, settings: Settings, email: str) -> str:
-    """The recruiter's scheduling link, if they have one. The demo login's can come from env so
-    it works without a reseed."""
+    """The recruiter's own scheduling link if set, else the demo-wide one: in the demo every
+    request, whoever made it, ends at the same booking page."""
     recruiter = db.get(Recruiter, email)
     if recruiter is not None and recruiter.booking_url:
         return recruiter.booking_url
-    if settings.demo_booking_url and email == settings.demo_recruiter_email:
-        return settings.demo_booking_url
-    return ""
+    return settings.demo_booking_url
