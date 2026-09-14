@@ -31,6 +31,8 @@ class Recruiter(Base):
     email: Mapped[str] = mapped_column(String(255), primary_key=True)
     first_name: Mapped[str] = mapped_column(String(80), nullable=False)
     last_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    # Where a candidate books a recruiter screen. Per recruiter; the demo login's comes from env.
+    booking_url: Mapped[str | None] = mapped_column(String(500))
 
     @property
     def full_name(self) -> str:

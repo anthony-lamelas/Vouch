@@ -119,6 +119,8 @@ def status_blocks(
     employee_first: str = "",
     suggested_message: str = "",
     note: str = "",
+    booking_message: str = "",
+    recruiter_first: str = "",
 ) -> list[dict[str, Any]]:
     """Return a copy of the message blocks reflecting the new status and next buttons."""
     kept = [
@@ -150,9 +152,39 @@ def status_blocks(
                     "type": "mrkdwn",
                     "text": (
                         f"{thanks} Once you've reached out to {contact_first}, "
-                        f"tap what {contact_first} said, or just reply here."
+                        "let me know what they said."
                     ),
                 },
+            }
+        )
+    if status == Status.CANDIDATE_INTERESTED:
+        thanks = f"Great news, thanks{' ' + employee_first if employee_first else ''}!"
+        recruiter = recruiter_first or "the recruiter"
+        if booking_message:
+            kept.append(
+                {
+                    "type": "section",
+                    "block_id": "vouch_suggested",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": (
+                            f"*Message to pass on to {contact_first}* (copy, tweak, send)\n"
+                            f"```{booking_message}```"
+                        ),
+                    },
+                }
+            )
+            text = (
+                f"{thanks} Pass {contact_first} the message above so they can book a screen "
+                f"with {recruiter}. I'll take it from here."
+            )
+        else:
+            text = f"{thanks} {recruiter} will take it from here."
+        kept.append(
+            {
+                "type": "section",
+                "block_id": "vouch_status",
+                "text": {"type": "mrkdwn", "text": text},
             }
         )
     if status == Status.EMPLOYEE_DECLINED:

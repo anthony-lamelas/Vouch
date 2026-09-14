@@ -230,3 +230,38 @@ def test_match_score_prefers_the_role_city() -> None:
         role_location="Tokyo",
     )
     assert {r["signal"]: r["label"] for r in result.reasons}["location"] == "Different region"
+
+
+def test_booking_draft_names_the_recruiter_and_link() -> None:
+    from app.services.outreach import OutreachContext, draft_booking
+
+    ctx = OutreachContext(
+        contact_full_name="Mark Martinez",
+        contact_title="Solutions Engineer",
+        contact_company="DeepMind",
+        role_title="AI Support Engineer",
+        role_team="Support",
+        role_location="Tokyo",
+        role_url="https://x",
+        employee_first_name="Frank",
+        recruiter_first_name="Anthony",
+    )
+    text = draft_booking(ctx, "https://cal.example/anthony")
+    assert text.startswith("Hey Mark! Great to hear you're interested. Anthony from our recruiting")
+    assert text.endswith("https://cal.example/anthony")
+
+
+def test_booking_link_falls_back_to_the_demo_wide_one() -> None:
+    from unittest.mock import MagicMock
+
+    from app.config import Settings
+    from app.services.ownership import booking_url_for
+
+    settings = Settings(demo_booking_url="https://cal.example/shared")
+    db = MagicMock()
+    db.get.return_value = None
+    assert booking_url_for(db, settings, "anyone@cognition.ai") == "https://cal.example/shared"
+    own = MagicMock()
+    own.booking_url = "https://cal.example/mine"
+    db.get.return_value = own
+    assert booking_url_for(db, settings, "me@cognition.ai") == "https://cal.example/mine"

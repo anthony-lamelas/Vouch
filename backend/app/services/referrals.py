@@ -30,8 +30,8 @@ from app.services.lifecycle import (
     Status,
     assert_transition,
 )
-from app.services.outreach import Drafts, OutreachContext, OutreachGenerator
-from app.services.ownership import display_name, recruiter_names
+from app.services.outreach import Drafts, OutreachContext, OutreachGenerator, draft_booking
+from app.services.ownership import booking_url_for, display_name, recruiter_names
 from app.services.slack import (
     Notifier,
     action_buttons,
@@ -321,6 +321,18 @@ class ReferralService:
             req.closed_outcome = note
         self._event(req, current, to_status, actor, note)
         self._update_slack(req, to_status, note=note)
+        if to_status == Status.CANDIDATE_INTERESTED and booking_url_for(
+            self.db, self.settings, req.requested_by
+        ):
+            recruiter = display_name(req.requested_by, recruiter_names(self.db)).split(" ")[0]
+            self._event(
+                req,
+                to_status,
+                to_status,
+                "system",
+                f"Sent {req.employee.full_name.split(' ')[0]} a booking link for "
+                f"{req.contact.full_name.split(' ')[0]} to schedule a screen with {recruiter}",
+            )
         if to_status == Status.CANDIDATE_DECLINED:
             self._auto_close(req, "Closed automatically: candidate passed")
         self.db.commit()
@@ -533,7 +545,9 @@ class ReferralService:
         if latest is None:
             return
         suggested = ""
-        if status == Status.EMPLOYEE_ACCEPTED:
+        booking_message = ""
+        recruiter_name = display_name(req.requested_by, recruiter_names(self.db))
+        if status in {Status.EMPLOYEE_ACCEPTED, Status.CANDIDATE_INTERESTED}:
             connection = connection_for(self.db, req.contact_id, req.employee_id)
             ctx = build_context(
                 contact=req.contact,
@@ -541,8 +555,13 @@ class ReferralService:
                 employee=req.employee,
                 connection=connection,
                 reasons=fit_reasons(self.db, req.contact_id, req.role_id),
+                recruiter_name=recruiter_name,
             )
-            suggested = self.generator.generate(ctx).casual
+            if status == Status.EMPLOYEE_ACCEPTED:
+                suggested = self.generator.generate(ctx).casual
+            else:
+                booking_url = booking_url_for(self.db, self.settings, req.requested_by)
+                booking_message = draft_booking(ctx, booking_url) if booking_url else ""
         blocks = status_blocks(
             list(latest.blocks),
             status,
@@ -551,6 +570,8 @@ class ReferralService:
             employee_first=req.employee.full_name.split(" ")[0],
             suggested_message=suggested,
             note=note or "",
+            booking_message=booking_message,
+            recruiter_first=recruiter_name.split(" ")[0],
         )
         self.notifier.update(
             channel_id=str(latest.external_channel_id),

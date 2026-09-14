@@ -71,3 +71,12 @@ def recruiter_names(db: Session) -> dict[str, str]:
 
 def display_name(email: str, names: Mapping[str, str]) -> str:
     return names.get(email) or name_from_email(email)
+
+
+def booking_url_for(db: Session, settings: Settings, email: str) -> str:
+    """The recruiter's own scheduling link if set, else the demo-wide one: in the demo every
+    request, whoever made it, ends at the same booking page."""
+    recruiter = db.get(Recruiter, email)
+    if recruiter is not None and recruiter.booking_url:
+        return recruiter.booking_url
+    return settings.demo_booking_url

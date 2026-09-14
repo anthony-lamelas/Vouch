@@ -238,6 +238,7 @@ def test_request_lifecycle_end_to_end(client: TestClient, db: Session) -> None:
         "requested",
         "employee_accepted",
         "candidate_interested",
+        "candidate_interested",  # the booking link went out
         "closed",
     ]
 
@@ -379,6 +380,25 @@ def test_slack_decline_form_records_the_reason(client: TestClient, db: Session) 
     )
 
 
+def test_interested_sends_the_booking_link(client: TestClient, db: Session) -> None:
+    req = _fresh_request(client, db)
+    client.post(f"/api/requests/{req.id}/transition", json={"to_status": "employee_accepted"})
+    r = client.post(
+        f"/api/requests/{req.id}/transition", json={"to_status": "candidate_interested"}
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["status"] == "candidate_interested"
+    last = body["events"][-1]
+    assert (last["from_status"], last["to_status"], last["actor_label"]) == (
+        "candidate_interested",
+        "candidate_interested",
+        "VOUCH",
+    )
+    assert last["note"].startswith("Sent ") and "booking link" in last["note"]
+    assert "to schedule a screen with" in last["note"]
+
+
 def test_candidate_pass_auto_closes(client: TestClient) -> None:
     role = _first_role(client, "data")
     page = client.get(f"/api/roles/{role['id']}/candidates", params={"limit": 40}).json()
@@ -480,9 +500,10 @@ def test_slack_free_text_reply_updates_status(client: TestClient, db: Session) -
     db.expire_all()
     db.refresh(req)
     assert req.status == "candidate_interested"
-    assert [e.to_status for e in req.events][-2:] == [
+    assert [e.to_status for e in req.events][-3:] == [
         "employee_accepted",
         "candidate_interested",
+        "candidate_interested",  # booking link sent
     ]
 
 

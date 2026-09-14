@@ -34,6 +34,7 @@ export const STATUS_TONES: Record<Status, Tone> = {
 /** Human sentence for a timeline event, to follow the actor's name. */
 export function eventSentence(from: Status | null, to: Status, contactFirstName: string): string {
   if (from === to && to === 'employee_accepted') return 'sent a nudge';
+  if (from === to && to === 'candidate_interested') return 'sent the booking link';
   switch (to) {
     case 'requested':
       return from === 'employee_declined' ? 'asked someone else' : 'opened the request';

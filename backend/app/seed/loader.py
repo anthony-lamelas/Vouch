@@ -78,7 +78,16 @@ def seed_database(db: Session, settings: Settings, *, prefer_live_roles: bool = 
     db.flush()
     db.add_all(
         [
-            Recruiter(email=email, first_name=first, last_name=last)
+            Recruiter(
+                email=email,
+                first_name=first,
+                last_name=last,
+                booking_url=(
+                    settings.demo_booking_url
+                    if email == settings.demo_recruiter_email and settings.demo_booking_url
+                    else None
+                ),
+            )
             for first, last, email in predefined_recruiters(settings)
         ]
     )
