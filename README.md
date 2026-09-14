@@ -67,7 +67,7 @@ All settings are environment variables (see [`.env.example`](.env.example)). The
 | `SLACK_DEMO_USER_ID` | Route every employee DM to one Slack user (the person playing "Bob") |
 | `ANTHROPIC_API_KEY`, `OUTREACH_MODE=claude` | Optional Claude-tailored drafts (template fallback) |
 | `ADMIN_TOKEN` | Protects `POST /api/admin/reset-demo` and `POST /api/admin/sync-roles` |
-| `DEMO_RECRUITER_EMAIL` | Login that owns the R&D and Customer Engineering roles in the seed; drives the "My roles" view |
+| `DEMO_RECRUITER_EMAIL`, `DEMO_RECRUITER_NAME` | The demo login: owns the R&D and Customer Engineering roles in the seed and is shown by name (derived from the email unless set) |
 
 ## Slack setup
 

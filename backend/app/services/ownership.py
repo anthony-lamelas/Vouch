@@ -4,9 +4,14 @@ department: the demo recruiter owns engineering-adjacent reqs, synthetic recruit
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from typing import Final
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from app.config import Settings
+from app.models import Recruiter
 
 SYNTHETIC_RECRUITERS: Final[dict[str, tuple[str, str]]] = {
     "Research & Development": ("Sam Okafor", "sam.okafor@cognition.ai"),
@@ -35,3 +40,35 @@ def default_owner(department: str, settings: Settings) -> tuple[str, str]:
         email = settings.demo_recruiter_email
         return settings.demo_recruiter_name or name_from_email(email), email
     return SYNTHETIC_RECRUITERS.get(department, FALLBACK_RECRUITER)
+
+
+def split_name(full_name: str) -> tuple[str, str]:
+    parts = full_name.strip().split()
+    if not parts:
+        return "", ""
+    return parts[0], " ".join(parts[1:])
+
+
+def predefined_recruiters(settings: Settings) -> list[tuple[str, str, str]]:
+    """(first_name, last_name, email) for every predefined recruiter, demo login first."""
+    out: list[tuple[str, str, str]] = []
+    if settings.demo_recruiter_email:
+        name = settings.demo_recruiter_name or name_from_email(settings.demo_recruiter_email)
+        first, last = split_name(name)
+        out.append((first, last, settings.demo_recruiter_email))
+    seen = {e for _, _, e in out}
+    for full, email in SYNTHETIC_RECRUITERS.values():
+        if email in seen:
+            continue
+        seen.add(email)
+        first, last = split_name(full)
+        out.append((first, last, email))
+    return out
+
+
+def recruiter_names(db: Session) -> dict[str, str]:
+    return {r.email: r.full_name for r in db.scalars(select(Recruiter)).all()}
+
+
+def display_name(email: str, names: Mapping[str, str]) -> str:
+    return names.get(email) or name_from_email(email)

@@ -211,7 +211,9 @@ export function PipelinePage() {
                       ) : null}
                     </div>
                   </td>
-                  <td className="text-ink-2 text-[12.5px]">{r.requested_by}</td>
+                  <td className="text-ink-2 text-[12.5px]" title={r.requested_by}>
+                    {r.requested_by_name}
+                  </td>
                   <td>
                     {r.last_message ? (
                       <div className="max-w-[300px]">

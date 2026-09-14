@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import uuid
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime
 
 from sqlalchemy import select
@@ -21,6 +21,7 @@ from app.schemas import (
     RequestSummary,
 )
 from app.services.lifecycle import LABELS, STALE_AFTER_DAYS, TRANSITIONS, Status
+from app.services.ownership import display_name, recruiter_names
 from app.services.referrals import shared_history
 
 
@@ -52,7 +53,9 @@ def connections_by_contact(
     return out
 
 
-def actor_label(actor: str, employees: dict[uuid.UUID, str]) -> str:
+def actor_label(
+    actor: str, employees: dict[uuid.UUID, str], recruiters: Mapping[str, str] | None = None
+) -> str:
     if actor.startswith("employee:"):
         try:
             return employees.get(uuid.UUID(actor.split(":", 1)[1]), "Employee")
@@ -60,7 +63,8 @@ def actor_label(actor: str, employees: dict[uuid.UUID, str]) -> str:
             return "Employee"
     if actor == "system":
         return "VOUCH"
-    return actor
+    email = actor.removeprefix("recruiter:")
+    return display_name(email, recruiters or {}) if "@" in email else actor
 
 
 def waiting_days(r: ReferralRequest, now: datetime | None = None) -> int | None:
@@ -87,7 +91,9 @@ def _last_message(r: ReferralRequest) -> LastMessageBrief | None:
     )
 
 
-def request_summary(r: ReferralRequest) -> RequestSummary:
+def request_summary(
+    r: ReferralRequest, recruiters: Mapping[str, str] | None = None
+) -> RequestSummary:
     days = waiting_days(r)
     return RequestSummary(
         id=r.id,
@@ -97,6 +103,7 @@ def request_summary(r: ReferralRequest) -> RequestSummary:
         role=r.role,
         employee=r.employee,
         requested_by=r.requested_by,
+        requested_by_name=display_name(r.requested_by, recruiters or {}),
         created_at=r.created_at,
         updated_at=r.updated_at,
         last_event_at=r.events[-1].created_at if r.events else None,
@@ -122,7 +129,8 @@ def request_detail(db: Session, r: ReferralRequest) -> RequestDetail:
     )
     connection = db.get(Connection, {"employee_id": r.employee_id, "contact_id": r.contact_id})
     ms = db.get(MatchScore, {"role_id": r.role_id, "contact_id": r.contact_id})
-    summary = request_summary(r)
+    recruiters = recruiter_names(db)
+    summary = request_summary(r, recruiters)
     return RequestDetail(
         **summary.model_dump(),
         outreach_casual=r.outreach_casual,
@@ -137,7 +145,7 @@ def request_detail(db: Session, r: ReferralRequest) -> RequestDetail:
                 from_status=Status(e.from_status) if e.from_status else None,
                 to_status=Status(e.to_status),
                 actor=e.actor,
-                actor_label=actor_label(e.actor, names),
+                actor_label=actor_label(e.actor, names, recruiters),
                 note=e.note,
                 created_at=e.created_at,
             )

@@ -14,6 +14,7 @@ from app.api.serializers import (
 )
 from app.models import Contact, MatchScore, ReferralRequest, Role
 from app.schemas import ContactDetail, RoleScoreBrief
+from app.services.ownership import recruiter_names
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
 
@@ -30,6 +31,7 @@ def get_contact(contact_id: uuid.UUID, db: DB, _: User) -> ContactDetail:
         .where(ReferralRequest.contact_id == contact_id)
         .order_by(ReferralRequest.created_at.desc())
     ).all()
+    names = recruiter_names(db)
     top_roles = db.execute(
         select(MatchScore.role_id, Role.title, Role.team, MatchScore.score)
         .join(Role, Role.id == MatchScore.role_id)
@@ -52,7 +54,7 @@ def get_contact(contact_id: uuid.UUID, db: DB, _: User) -> ContactDetail:
         education=contact.education,
         enrichment_source=contact.enrichment_source,
         connections=[connection_out(c) for c in conns],
-        requests=[request_summary(r) for r in requests],
+        requests=[request_summary(r, names) for r in requests],
         top_roles=[
             RoleScoreBrief(role_id=rid, title=title, team=team, score=float(score))
             for rid, title, team, score in top_roles

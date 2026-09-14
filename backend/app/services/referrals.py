@@ -29,6 +29,7 @@ from app.services.lifecycle import (
     assert_transition,
 )
 from app.services.outreach import Drafts, OutreachContext, OutreachGenerator
+from app.services.ownership import display_name, recruiter_names
 from app.services.slack import (
     Notifier,
     build_request_blocks,
@@ -328,6 +329,7 @@ class ReferralService:
             employee=employee,
             demo_routed=demo_routed,
             app_url=self.settings.app_base_url,
+            requested_by_name=display_name(req.requested_by, recruiter_names(self.db)),
         )
         text = (
             f"Referral request: could you reach out to {ctx.contact_full_name} "

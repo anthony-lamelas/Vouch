@@ -76,7 +76,7 @@ function RequestView({ r }: { r: RequestDetail }) {
               </span>
             ) : null}
             <span className="text-[12.5px]">
-              Requested by {r.requested_by} · {formatDate(r.created_at)} · last activity{' '}
+              Requested by {r.requested_by_name} · {formatDate(r.created_at)} · last activity{' '}
               {formatRelative(r.last_event_at ?? r.updated_at)}
             </span>
           </div>

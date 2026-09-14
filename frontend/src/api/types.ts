@@ -190,6 +190,7 @@ export interface RequestSummary {
   role: RoleBrief;
   employee: EmployeeBrief;
   requested_by: string;
+  requested_by_name: string;
   created_at: string;
   updated_at: string;
   last_event_at: string | null;
@@ -261,5 +262,6 @@ export interface Stats {
 export interface MeOut {
   id: string;
   email: string;
+  name: string;
   auth_disabled: boolean;
 }
