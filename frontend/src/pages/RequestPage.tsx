@@ -9,6 +9,7 @@ import { PageHeader } from '../components/PageHeader';
 import { Popover } from '../components/Popover';
 import { ProfileBlocks } from '../components/ProfileBlocks';
 import { StatusPill } from '../components/StatusPill';
+import { Tabs } from '../components/Tabs';
 import { firstName, formatDate, formatDateTime, formatRelative } from '../lib/format';
 import { STATUS_LABELS, eventSentence } from '../lib/status';
 
@@ -45,6 +46,7 @@ function RequestView({ r }: { r: RequestDetail }) {
       ),
     [r.events],
   );
+  const [tab, setTab] = useState<'timeline' | 'candidate'>('timeline');
 
   return (
     <div>
@@ -71,46 +73,91 @@ function RequestView({ r }: { r: RequestDetail }) {
             contactFirst={contactFirst}
             employeeFirst={employeeFirst}
           />
-          <h2 className="mt-4 text-[13px] font-semibold text-ink">Timeline</h2>
-          <ol className="mt-1">
-            {events.map((e, i) => {
-              const latest = i === events.length - 1;
-              return (
-                <li
-                  key={e.id}
-                  className="grid grid-cols-[10px_minmax(0,1fr)_auto] items-start gap-x-2.5 border-b border-line py-2 text-[13px]"
-                >
-                  <span
-                    aria-hidden
-                    className={`mt-[7px] size-1.5 rounded-full ${latest ? 'bg-cobalt' : 'bg-line'}`}
-                  />
-                  <div className="min-w-0">
-                    <span className="font-medium text-ink">{e.actor_label}</span>{' '}
-                    <span className="text-carbon">
-                      {eventSentence(e.from_status, e.to_status, contactFirst)}
-                    </span>
-                    {e.note ? (
-                      <blockquote className="mt-1 border-l-2 border-line pl-2 text-[12px] tracking-normal text-muted">
-                        “{e.note}”
-                      </blockquote>
-                    ) : null}
-                  </div>
-                  <time
-                    dateTime={e.created_at}
-                    title={e.created_at}
-                    className="whitespace-nowrap text-[12px] tracking-normal text-muted tnum"
-                  >
-                    {formatDateTime(e.created_at)}
-                  </time>
-                </li>
-              );
-            })}
-          </ol>
-
-          <CandidateProfile r={r} />
+          <div className="mt-4 flex h-9 items-stretch border-b border-line">
+            <Tabs
+              label="Request detail"
+              value={tab}
+              onChange={setTab}
+              options={[
+                { value: 'timeline', label: 'Timeline', count: events.length },
+                { value: 'candidate', label: 'Candidate' },
+              ]}
+            />
+          </div>
+          {tab === 'timeline' ? (
+            <Timeline r={r} events={events} contactFirst={contactFirst} />
+          ) : (
+            <CandidateProfile r={r} />
+          )}
         </section>
       </div>
     </div>
+  );
+}
+
+/** Events as blocks on a rail: sentence, time, then any note or the message that went out. */
+function Timeline({
+  r,
+  events,
+  contactFirst,
+}: {
+  r: RequestDetail;
+  events: EventOut[];
+  contactFirst: string;
+}) {
+  const employeeFirst = firstName(r.employee.full_name);
+  const opened = events.find((e) => e.to_status === 'requested' && e.from_status === null);
+  return (
+    <ol className="mt-4 flex flex-col gap-5" aria-label="Timeline">
+      {events.map((e, i) => {
+        const latest = i === events.length - 1;
+        const showMessage = e.id === opened?.id && r.outreach_casual.trim() !== '';
+        return (
+          <li key={e.id} className="relative pl-6">
+            {!latest ? (
+              <span
+                aria-hidden
+                className="absolute left-[4.5px] top-[18px] -bottom-5 w-px bg-line"
+              />
+            ) : null}
+            <span
+              aria-hidden
+              className={`absolute left-0 top-[5px] size-2.5 rounded-full ring-2 ring-canvas ${
+                latest ? 'bg-cobalt' : 'bg-line'
+              }`}
+            />
+            <div className="flex items-baseline justify-between gap-4 text-[14px] leading-5">
+              <p className="min-w-0 text-carbon">
+                <span className="font-semibold text-ink">{e.actor_label}</span>{' '}
+                {eventSentence(e.from_status, e.to_status, contactFirst)}
+              </p>
+              <time
+                dateTime={e.created_at}
+                title={formatDateTime(e.created_at)}
+                className="shrink-0 whitespace-nowrap text-[12px] tracking-normal text-muted tnum"
+              >
+                {formatRelative(e.created_at)}
+              </time>
+            </div>
+            {e.note ? (
+              <div className="mt-2 rounded-[10px] bg-haze px-3 py-2.5 text-[13px] leading-5 text-carbon">
+                {e.note}
+              </div>
+            ) : null}
+            {showMessage ? (
+              <div className="mt-2 rounded-[10px] bg-haze px-3 py-2.5">
+                <p className="text-[12px] tracking-normal text-muted">
+                  Message sent to {employeeFirst}
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-[13px] leading-5 text-carbon">
+                  {r.outreach_casual}
+                </p>
+              </div>
+            ) : null}
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
@@ -120,7 +167,7 @@ function CandidateProfile({ r }: { r: RequestDetail }) {
   return (
     <section aria-labelledby="candidate-title" className="mt-4">
       <div className="mb-2 flex items-baseline justify-between gap-4">
-        <h2 id="candidate-title" className="text-[13px] font-semibold text-ink">
+        <h2 id="candidate-title" className="sr-only">
           Candidate
         </h2>
         <Link
