@@ -176,7 +176,7 @@ def status_blocks(
             )
             text = (
                 f"{thanks} Pass {contact_first} the message above so they can book a screen "
-                f"with {recruiter}. I'll take it from here."
+                f"with {recruiter}."
             )
         else:
             text = f"{thanks} {recruiter} will take it from here."
