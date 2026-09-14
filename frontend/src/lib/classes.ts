@@ -5,7 +5,7 @@
 
 import type { Tone } from './status';
 
-/** Soft-tag background + text per semantic tone (docs/design/attio-style.md). No dot. */
+/** Soft-tag background + text per semantic tone (tokens in index.css). No dot. */
 export const TONE_CLASS: Record<Tone, string> = {
   neutral: 'bg-closed-bg text-closed-text',
   warning: 'bg-wait-bg text-wait-text',

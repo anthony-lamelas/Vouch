@@ -21,7 +21,7 @@ export const STATUS_LABELS: Record<Status, string> = {
   closed: 'Closed',
 };
 
-/** Maps onto the semantic tag colours in docs/design/attio-style.md. */
+/** Maps onto the semantic tag colour tokens in index.css. */
 export const STATUS_TONES: Record<Status, Tone> = {
   requested: 'warning',
   employee_accepted: 'info',
