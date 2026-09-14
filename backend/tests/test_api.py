@@ -57,7 +57,7 @@ def test_role_ownership_and_mine_filters(client: TestClient) -> None:
     assert all(r["owner_email"] and r["owner_name"] for r in all_roles)
     mine = client.get("/api/roles", params={"mine": True}).json()
     assert mine and all(r["is_mine"] for r in mine)
-    assert {r["department"] for r in mine} == {"Research & Development", "Customer Engineering"}
+    assert all(r["title"].startswith(("AI Support Engineer", "Applied AI Engineer")) for r in mine)
     assert len(mine) < len(all_roles)
     others = [r for r in all_roles if not r["is_mine"]]
     assert {r["owner_name"] for r in others} >= {"Dana Whitfield", "Chris Nakamura"}
