@@ -36,12 +36,7 @@ export function CandidateDrawer({
 
   // The employee picker and the message preview live here so the preview's reasons can feed
   // "Why this candidate" even when the drawer was deep-linked rather than opened from a row.
-  const strongest = connections[0];
-  const [pickedId, setPickedId] = useState<string | undefined>();
-  const employeeId =
-    pickedId && connections.some((c) => c.employee.id === pickedId)
-      ? pickedId
-      : strongest?.employee.id;
+  const employeeId = connections[0]?.employee.id;
   const preview = useAskPreview(
     pickerVisible && data && employeeId
       ? { contact_id: data.id, role_id: roleId, employee_id: employeeId }
@@ -113,7 +108,6 @@ export function CandidateDrawer({
                 roleTitle={roleTitle}
                 create={create}
                 employeeId={employeeId}
-                onPick={setPickedId}
                 preview={preview}
               />
             )}
@@ -248,7 +242,6 @@ function Ask({
   roleTitle,
   create,
   employeeId,
-  onPick,
   preview,
 }: {
   contact: ContactDetail;
@@ -257,7 +250,6 @@ function Ask({
   roleTitle: string;
   create: ReturnType<typeof useCreateRequest>;
   employeeId: string | undefined;
-  onPick: (id: string) => void;
   preview: ReturnType<typeof useAskPreview>;
 }) {
   const [message, setMessage] = useState('');
@@ -271,6 +263,7 @@ function Ask({
   }, [draft]);
 
   const chosen = connections.find((c) => c.employee.id === employeeId) ?? connections[0];
+  if (!chosen) return null;
   const chosenFirst = chosen ? firstName(chosen.employee.full_name) : 'employee';
 
   const error = create.error;
@@ -312,35 +305,19 @@ function Ask({
         </span>
       </div>
 
-      <div role="radiogroup" aria-label="Who to ask" className="flex flex-col gap-1">
-        {connections.map((c, i) => {
-          const checked = c.employee.id === employeeId;
-          return (
-            <button
-              key={c.employee.id}
-              type="button"
-              role="radio"
-              aria-checked={checked}
-              onClick={() => onPick(c.employee.id)}
-              className={`block w-full rounded-[8px] border px-2.5 py-1.5 text-left transition-colors ${
-                checked ? 'border-cobalt bg-ice' : 'border-line bg-canvas hover:bg-haze'
-              }`}
-            >
-              <ConnectionLine c={c} selected={checked} />
-              {i === 0 && connections.length > 1 ? (
-                <span className="text-[12px] tracking-normal text-cobalt">
-                  Strongest connection
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
+      <p className="text-[13px]">
+        <span className="text-muted">Asking </span>
+        <span className="font-medium text-ink">{chosen.employee.full_name}</span>
+        <span className="text-[12px] tracking-normal text-muted">
+          {' '}
+          {chosen.employee.title}
+          {chosen.employee.team ? `, ${chosen.employee.team}` : ''}
+        </span>
+      </p>
 
       <label className="mt-3 block">
         <span className="mb-1 flex items-baseline justify-between text-[12px] tracking-normal">
           <span className="font-medium text-carbon">Message to {chosenFirst}</span>
-          <span className="text-muted">Sent as a Slack DM. Edit it before sending.</span>
         </span>
         <textarea
           value={message}
