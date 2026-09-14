@@ -22,6 +22,11 @@
   --color-ice: #e4edff;
   --color-periwinkle: #bad0fa;
   --color-white: #ffffff;
+  --color-line-strong: #d0d5dc;
+  /* Text on the primary (graphite) button; the button inverts on dark. */
+  --color-primary-fg: #ffffff;
+  /* Drawer backdrop. */
+  --color-scrim: rgba(28, 29, 31, 0.1);
 
   /* Semantic soft tags */
   --color-wait-bg: #fff4d6;
@@ -51,9 +56,111 @@
   --radius-card: 12px;
 
   --shadow-*: initial;
-  --shadow-card: rgba(28, 40, 64, 0.1) 0 2px 3px -2px, rgba(28, 40, 64, 0.04) 0 4px 6px -2px;
-  --shadow-pop: rgba(28, 40, 64, 0.14) 0 10px 28px -10px, rgba(28, 40, 64, 0.06) 0 2px 6px -2px;
-  --shadow-drawer: rgba(28, 40, 64, 0.18) -12px 0 40px -12px, rgba(28, 40, 64, 0.08) 0 0 0 1px;
+}
+
+/*
+ * Elevation lives outside @theme on purpose: Tailwind inlines shadow values into its
+ * utilities, which would freeze the light shadows in dark mode. The shadow-* utilities below
+ * read these variables at paint time instead.
+ */
+@layer base {
+  :root {
+    --elev-card: rgba(28, 40, 64, 0.1) 0 2px 3px -2px, rgba(28, 40, 64, 0.04) 0 4px 6px -2px;
+    --elev-pop: rgba(28, 40, 64, 0.14) 0 10px 28px -10px, rgba(28, 40, 64, 0.06) 0 2px 6px -2px;
+    --elev-drawer: rgba(28, 40, 64, 0.18) -12px 0 40px -12px, rgba(28, 40, 64, 0.08) 0 0 0 1px;
+  }
+}
+
+@utility shadow-card {
+  box-shadow: var(--elev-card);
+}
+@utility shadow-pop {
+  box-shadow: var(--elev-pop);
+}
+@utility shadow-drawer {
+  box-shadow: var(--elev-drawer);
+}
+
+/*
+ * Dark theme (Attio-on-dark). Utilities read the variables, so redefining them here re-skins
+ * every component. Applied by an explicit data-theme, or by the OS preference when the user
+ * has not chosen. Keep the two blocks identical.
+ */
+@layer base {
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+    --color-canvas: #111315;
+    --color-paper: #17191c;
+    --color-haze: #1f2226;
+    --color-line: #2a2e33;
+    --color-line-strong: #363b41;
+    --color-ink: #ececee;
+    --color-graphite: #ececee;
+    --color-carbon: #cfd4da;
+    --color-muted: #9aa3ad;
+    --color-caption: #7b8590;
+    --color-placeholder: #6b7480;
+    --color-cobalt: #4d8bff;
+    --color-cobalt-hover: #6da0ff;
+    --color-ice: #17233a;
+    --color-periwinkle: #2b3d63;
+    --color-primary-fg: #1c1d1f;
+    --color-scrim: rgba(0, 0, 0, 0.5);
+    --color-wait-bg: rgba(224, 161, 0, 0.15);
+    --color-wait-text: #f2c66d;
+    --color-reach-bg: rgba(38, 109, 240, 0.15);
+    --color-reach-text: #8fb4ff;
+    --color-reach-dot: #4d8bff;
+    --color-yes-bg: rgba(34, 160, 107, 0.15);
+    --color-yes-text: #7dd3a0;
+    --color-no-bg: rgba(214, 69, 69, 0.15);
+    --color-no-text: #f19a9a;
+    --color-closed-bg: rgba(143, 153, 168, 0.15);
+    --color-closed-text: #b3bac3;
+    --color-needs-bg: #2b2412;
+    --color-needs-text: #f2c66d;
+    --elev-card: rgba(0, 0, 0, 0.5) 0 2px 3px -2px, rgba(0, 0, 0, 0.5) 0 4px 6px -2px;
+    --elev-pop: rgba(0, 0, 0, 0.5) 0 10px 28px -10px, rgba(0, 0, 0, 0.5) 0 2px 6px -2px;
+    --elev-drawer: rgba(0, 0, 0, 0.5) -12px 0 40px -12px, rgba(0, 0, 0, 0.5) 0 0 0 1px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      color-scheme: dark;
+      --color-canvas: #111315;
+      --color-paper: #17191c;
+      --color-haze: #1f2226;
+      --color-line: #2a2e33;
+      --color-line-strong: #363b41;
+      --color-ink: #ececee;
+      --color-graphite: #ececee;
+      --color-carbon: #cfd4da;
+      --color-muted: #9aa3ad;
+      --color-caption: #7b8590;
+      --color-placeholder: #6b7480;
+      --color-cobalt: #4d8bff;
+      --color-cobalt-hover: #6da0ff;
+      --color-ice: #17233a;
+      --color-periwinkle: #2b3d63;
+      --color-primary-fg: #1c1d1f;
+      --color-scrim: rgba(0, 0, 0, 0.5);
+      --color-wait-bg: rgba(224, 161, 0, 0.15);
+      --color-wait-text: #f2c66d;
+      --color-reach-bg: rgba(38, 109, 240, 0.15);
+      --color-reach-text: #8fb4ff;
+      --color-reach-dot: #4d8bff;
+      --color-yes-bg: rgba(34, 160, 107, 0.15);
+      --color-yes-text: #7dd3a0;
+      --color-no-bg: rgba(214, 69, 69, 0.15);
+      --color-no-text: #f19a9a;
+      --color-closed-bg: rgba(143, 153, 168, 0.15);
+      --color-closed-text: #b3bac3;
+      --color-needs-bg: #2b2412;
+      --color-needs-text: #f2c66d;
+      --shadow-card: rgba(0, 0, 0, 0.5) 0 2px 3px -2px, rgba(0, 0, 0, 0.5) 0 4px 6px -2px;
+      --shadow-pop: rgba(0, 0, 0, 0.5) 0 10px 28px -10px, rgba(0, 0, 0, 0.5) 0 2px 6px -2px;
+      --shadow-drawer: rgba(0, 0, 0, 0.5) -12px 0 40px -12px, rgba(0, 0, 0, 0.5) 0 0 0 1px;
+    }
+  }
 }
 
 @layer base {
@@ -188,6 +295,13 @@
     border-bottom: 1px solid var(--color-line);
     white-space: nowrap;
   }
+  /* Calm variant: no tint, a 3px rule in the stage colour (set via --band-rule). */
+  & tbody th.band-sm {
+    height: 32px;
+    font-size: 13px;
+    background: var(--color-canvas);
+    box-shadow: inset 3px 0 0 var(--band-rule, var(--color-caption));
+  }
   & tbody tr.is-clickable {
     cursor: pointer;
   }
@@ -207,6 +321,14 @@
   & td.num,
   & th.num {
     text-align: right;
+  }
+}
+
+/* Pipeline: a clearer, quieter header row on top of data-table. */
+@utility data-table-calm {
+  & thead th {
+    font-size: 13px;
+    background: var(--color-haze);
   }
 }
 

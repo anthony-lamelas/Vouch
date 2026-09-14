@@ -63,11 +63,14 @@ def list_requests(
 
 
 @router.post("/preview", response_model=AskPreviewOut)
-def preview_request(body: AskPreviewIn, service: Referrals, _: User) -> AskPreviewOut:
+def preview_request(body: AskPreviewIn, service: Referrals, user: User) -> AskPreviewOut:
     """Show the recruiter who would be asked and what they would receive, before sending."""
     try:
         connection, ctx, drafts = service.preview(
-            contact_id=body.contact_id, role_id=body.role_id, employee_id=body.employee_id
+            contact_id=body.contact_id,
+            role_id=body.role_id,
+            employee_id=body.employee_id,
+            recruiter_name=user.name,
         )
     except NoConnectionError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -76,6 +79,7 @@ def preview_request(body: AskPreviewIn, service: Referrals, _: User) -> AskPrevi
     return AskPreviewOut(
         employee=EmployeeBrief.model_validate(connection.employee),
         connection=connection_out(connection),
+        ask=drafts.ask,
         casual=drafts.casual,
         formal=drafts.formal,
         reasons=[{"label": r} for r in ctx.fit_reasons],
@@ -91,6 +95,7 @@ def create_request(body: CreateRequestIn, service: Referrals, user: User) -> Req
             employee_id=body.employee_id,
             requested_by=user.email,
             message=body.message,
+            recruiter_name=user.name,
         )
     except ActiveRequestExistsError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

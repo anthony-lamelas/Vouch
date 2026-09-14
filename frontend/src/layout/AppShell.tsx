@@ -1,16 +1,47 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useMe, useRequests } from '../api/queries';
 import { useAuth } from '../auth/context';
 import { Button } from '../components/Button';
-import { BriefcaseIcon, PipelineIcon } from '../components/Icons';
+import { BriefcaseIcon, MoonIcon, PipelineIcon, SunIcon } from '../components/Icons';
 import { Wordmark } from '../components/Wordmark';
 import { needsYouCount, sidebarNeedsYou } from '../lib/needsYou';
+import { applyTheme, otherTheme, resolveTheme, storeTheme, type Theme } from '../lib/theme';
 
 const NAV = [
   { to: '/roles', label: 'Roles', Icon: BriefcaseIcon },
   { to: '/pipeline', label: 'Pipeline', Icon: PipelineIcon },
 ] as const;
+
+/** The current theme and a toggle that stamps <html>, persists, and re-renders. */
+function useTheme(): [Theme, () => void] {
+  const [theme, setTheme] = useState<Theme>(() => resolveTheme());
+  const toggle = useCallback(() => {
+    setTheme((current) => {
+      const next = otherTheme(current);
+      applyTheme(next);
+      storeTheme(next);
+      return next;
+    });
+  }, []);
+  return [theme, toggle];
+}
+
+function ThemeToggle() {
+  const [theme, toggle] = useTheme();
+  const label = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={label}
+      title={label}
+      className="inline-flex size-7 shrink-0 items-center justify-center rounded-[8px] text-muted hover:bg-haze hover:text-ink"
+    >
+      {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+    </button>
+  );
+}
 
 export function AppShell() {
   const { user, signOut } = useAuth();
@@ -24,13 +55,16 @@ export function AppShell() {
   return (
     <div className="flex min-h-screen bg-canvas">
       <aside className="sticky top-0 flex h-screen w-[232px] shrink-0 flex-col bg-paper px-3 pb-3 pt-4">
-        <NavLink
-          to="/roles"
-          className="flex h-7 items-center rounded-[6px] px-2"
-          aria-label="VOUCH home"
-        >
-          <Wordmark />
-        </NavLink>
+        <div className="flex items-center justify-between">
+          <NavLink
+            to="/roles"
+            className="flex h-7 items-center rounded-[6px] px-2"
+            aria-label="VOUCH home"
+          >
+            <Wordmark />
+          </NavLink>
+          <ThemeToggle />
+        </div>
 
         <nav aria-label="Primary" className="mt-4 flex flex-col gap-0.5">
           {NAV.map(({ to, label, Icon }) => (
@@ -81,8 +115,11 @@ export function AppShell() {
           </section>
         ) : null}
 
-        <div className="mt-auto flex items-center justify-between gap-2 pl-2">
-          <span className="truncate text-[13px] font-medium text-carbon" title={user?.email}>
+        <div className="mt-auto flex items-center gap-1 pl-2">
+          <span
+            className="min-w-0 flex-1 truncate text-[13px] font-medium text-carbon"
+            title={user?.email}
+          >
             {me.data?.name ?? user?.email}
           </span>
           <Button

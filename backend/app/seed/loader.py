@@ -274,7 +274,7 @@ def seed_demo_requests(db: Session) -> int:
             employee_id=employee.id,
             status=steps[-1][0].value,
             requested_by=role.owner_email or RECRUITER,
-            outreach_casual=drafts.casual,
+            outreach_casual=drafts.ask,
             outreach_formal=drafts.formal,
         )
         req.created_at = now - timedelta(days=steps[0][1])
@@ -319,7 +319,7 @@ def seed_demo_requests(db: Session) -> int:
                     employee_id=employee.id,
                     channel="slack",
                     recipient="seed",
-                    body=drafts.casual,
+                    body=drafts.ask,
                     blocks=[],
                     delivered=True,
                 )

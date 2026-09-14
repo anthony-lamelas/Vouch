@@ -10,7 +10,12 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
-from app.services.taxonomy import ADJACENT_FAMILIES, seniority_distance
+from app.services.taxonomy import (
+    ADJACENT_FAMILIES,
+    SENIORITY_LABELS,
+    family_label,
+    seniority_distance,
+)
 
 # ---- Connection strength -------------------------------------------------------------------
 
@@ -195,7 +200,10 @@ def match_score(
             {
                 "signal": "fit",
                 "label": "Same job family" if contact_family == role_family else "Adjacent role",
-                "detail": f"{contact_seniority} {contact_family.replace('_', ' ')}",
+                "detail": (
+                    f"{SENIORITY_LABELS.get(contact_seniority, contact_seniority)} · "
+                    f"{family_label(contact_family)}"
+                ),
                 "value": fit,
             }
         )

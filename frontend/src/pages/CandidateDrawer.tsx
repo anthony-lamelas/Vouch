@@ -5,13 +5,12 @@ import { ApiError } from '../api/client';
 import { keys, useAskPreview, useContact, useCreateRequest } from '../api/queries';
 import type { ConnectionOut, ContactDetail, Reason, RequestDetail } from '../api/types';
 import { Button } from '../components/Button';
-import { Chip } from '../components/Chip';
 import { ErrorState, Skeleton } from '../components/EmptyState';
 import { XIcon } from '../components/Icons';
 import { SectionTitle } from '../components/PageHeader';
 import { StatusPill } from '../components/StatusPill';
-import { StrengthBar } from '../components/StrengthBar';
-import { firstName, formatRelative, formatSpan } from '../lib/format';
+import { ProfileBlocks } from '../components/ProfileBlocks';
+import { firstName, formatRelative } from '../lib/format';
 
 export function CandidateDrawer({
   contactId,
@@ -121,57 +120,11 @@ export function CandidateDrawer({
 
             <WhyList reasons={why} />
 
-            <section>
-              <SectionTitle>Experience</SectionTitle>
-              <ol className="ml-[3px] space-y-2 border-l border-line pl-3.5 text-[13px]">
-                {data.experiences.map((e, i) => (
-                  <li key={i} className="relative">
-                    <span
-                      aria-hidden
-                      className={`absolute -left-[17.5px] top-[6px] size-[7px] rounded-full ring-2 ring-canvas ${
-                        e.end ? 'bg-line' : 'bg-cobalt'
-                      }`}
-                    />
-                    <div className="leading-5 text-ink">
-                      <span className="font-medium">{e.title ?? '—'}</span>
-                      <span className="text-carbon"> at {e.company ?? '—'}</span>
-                    </div>
-                    <div className="text-[12px] tracking-normal text-muted tnum">
-                      {e.team ? `${e.team}, ` : ''}
-                      {formatSpan(e.start, e.end)}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </section>
-
-            {data.education.length > 0 ? (
-              <section>
-                <SectionTitle>Education</SectionTitle>
-                <ul className="space-y-1 text-[13px]">
-                  {data.education.map((ed, i) => (
-                    <li key={i}>
-                      <div className="text-ink">{ed.school ?? '—'}</div>
-                      <div className="text-[12px] tracking-normal text-muted tnum">
-                        {[ed.degree, ed.field].filter(Boolean).join(', ')}
-                        {ed.start_year || ed.end_year
-                          ? `, ${String(ed.start_year ?? '?')}–${String(ed.end_year ?? '?')}`
-                          : ''}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-
-            <section>
-              <SectionTitle>Skills</SectionTitle>
-              <div className="flex flex-wrap gap-1">
-                {data.skills.map((s) => (
-                  <Chip key={s}>{s}</Chip>
-                ))}
-              </div>
-            </section>
+            <ProfileBlocks
+              experiences={data.experiences}
+              education={data.education}
+              skills={data.skills}
+            />
 
             {!pickerVisible && connections.length > 0 ? (
               <section>
@@ -227,19 +180,27 @@ function Notice({ children }: { children: ReactNode }) {
   );
 }
 
-function ConnectionLine({ c }: { c: ConnectionOut }) {
+function ConnectionLine({
+  c,
+  selected = false,
+}: {
+  c: ConnectionOut;
+  /** The read-only connections list keeps its strength bar; the picker does not. */
+  selected?: boolean;
+}) {
   return (
     <div className="min-w-0 text-[13px]">
       <div className="flex items-center justify-between gap-3">
         <span className="min-w-0 truncate">
-          <span className="font-medium text-ink">{c.employee.full_name}</span>
+          <span className={`font-medium ${selected ? 'text-cobalt' : 'text-ink'}`}>
+            {c.employee.full_name}
+          </span>
           <span className="text-[12px] tracking-normal text-muted">
             {' '}
             {c.employee.title}
             {c.employee.team ? `, ${c.employee.team}` : ''}
           </span>
         </span>
-        <StrengthBar value={c.strength} />
       </div>
       {c.shared_history ? (
         <div className="text-[12px] tracking-normal text-carbon">{c.shared_history}</div>
@@ -304,7 +265,7 @@ function Ask({
 
   // A new draft arrives whenever the employee changes; it replaces whatever was typed because
   // the wording is personal to that employee's history with the candidate.
-  const draft = preview.data?.casual;
+  const draft = preview.data?.ask;
   useEffect(() => {
     if (draft !== undefined) setMessage(draft);
   }, [draft]);
@@ -351,37 +312,30 @@ function Ask({
         </span>
       </div>
 
-      <fieldset className="-mx-1.5">
-        <legend className="sr-only">Who to ask</legend>
+      <div role="radiogroup" aria-label="Who to ask" className="flex flex-col gap-1">
         {connections.map((c, i) => {
           const checked = c.employee.id === employeeId;
           return (
-            <label
+            <button
               key={c.employee.id}
-              className={`flex cursor-pointer items-start gap-2.5 rounded-[8px] px-1.5 py-1.5 ${
-                checked ? 'bg-ice' : 'hover:bg-haze'
+              type="button"
+              role="radio"
+              aria-checked={checked}
+              onClick={() => onPick(c.employee.id)}
+              className={`block w-full rounded-[8px] border px-2.5 py-1.5 text-left transition-colors ${
+                checked ? 'border-cobalt bg-ice' : 'border-line bg-canvas hover:bg-haze'
               }`}
             >
-              <input
-                type="radio"
-                name="employee"
-                value={c.employee.id}
-                checked={checked}
-                onChange={() => onPick(c.employee.id)}
-                className="mt-[3px] accent-cobalt"
-              />
-              <div className="min-w-0 flex-1">
-                <ConnectionLine c={c} />
-                {i === 0 && connections.length > 1 ? (
-                  <span className="text-[12px] tracking-normal text-cobalt">
-                    Strongest connection
-                  </span>
-                ) : null}
-              </div>
-            </label>
+              <ConnectionLine c={c} selected={checked} />
+              {i === 0 && connections.length > 1 ? (
+                <span className="text-[12px] tracking-normal text-cobalt">
+                  Strongest connection
+                </span>
+              ) : null}
+            </button>
           );
         })}
-      </fieldset>
+      </div>
 
       <label className="mt-3 block">
         <span className="mb-1 flex items-baseline justify-between text-[12px] tracking-normal">

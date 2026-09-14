@@ -43,6 +43,23 @@ ADJACENT_FAMILIES: Final[dict[str, frozenset[str]]] = {
     "operations": frozenset({"finance_legal", "people_ops", "recruiting"}),
 }
 
+SENIORITY_LABELS: Final[dict[str, str]] = {
+    "junior": "Junior",
+    "mid": "Mid-level",
+    "senior": "Senior",
+    "staff": "Staff",
+    "lead": "Lead",
+    "director": "Director",
+    "vp": "VP",
+}
+
+
+def family_label(family: str) -> str:
+    """'ml_research' -> 'ML research', 'customer_engineering' -> 'Customer engineering'."""
+    words = family.replace("_", " ")
+    return "ML research" if family == "ml_research" else words[:1].upper() + words[1:]
+
+
 SENIORITY_ORDER: Final[tuple[str, ...]] = (
     "junior",
     "mid",

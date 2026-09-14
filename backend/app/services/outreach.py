@@ -21,6 +21,7 @@ class OutreachContext:
     employee_first_name: str
     shared_history: str | None = None
     fit_reasons: list[str] = field(default_factory=list)
+    recruiter_first_name: str = ""
 
     @property
     def contact_first_name(self) -> str:
@@ -29,8 +30,9 @@ class OutreachContext:
 
 @dataclass(frozen=True)
 class Drafts:
-    casual: str
-    formal: str
+    ask: str  # the recruiter's note to the employee: "would you refer X for Y?"
+    casual: str  # a suggested DM the employee could send the candidate
+    formal: str  # email version of the same
     generator: str
 
 
@@ -60,6 +62,22 @@ def _casual_history(history: str) -> str:
         if history.startswith(prefix):
             return replacement + history[len(prefix) :]
     return history[:1].lower() + history[1:]
+
+
+def draft_ask(ctx: OutreachContext) -> str:
+    """Concise note from the recruiter to the employee asking for the referral."""
+    history = (
+        f" You two {ctx.shared_history[:1].lower()}{ctx.shared_history[1:]}, "
+        "so you seemed like the right person to ask."
+        if ctx.shared_history
+        else ""
+    )
+    signoff = f"\n\nThanks,\n{ctx.recruiter_first_name}" if ctx.recruiter_first_name else ""
+    return (
+        f"Hi {ctx.employee_first_name}, would you be willing to refer {ctx.contact_full_name} "
+        f"({ctx.contact_title} at {ctx.contact_company}) for {ctx.role_title}?{history} "
+        f"If yes, just say so and I'll take it from there.{signoff}"
+    )
 
 
 def draft_casual(ctx: OutreachContext) -> str:
@@ -98,7 +116,12 @@ class TemplateGenerator:
     name = "template"
 
     def generate(self, ctx: OutreachContext) -> Drafts:
-        return Drafts(casual=draft_casual(ctx), formal=draft_formal(ctx), generator=self.name)
+        return Drafts(
+            ask=draft_ask(ctx),
+            casual=draft_casual(ctx),
+            formal=draft_formal(ctx),
+            generator=self.name,
+        )
 
 
 class ClaudeGenerator:
@@ -152,7 +175,7 @@ class ClaudeGenerator:
             casual, formal = str(data["casual"]).strip(), str(data["formal"]).strip()
             if not casual or not formal:
                 raise ValueError("empty draft")
-            return Drafts(casual=casual, formal=formal, generator=self.name)
+            return Drafts(ask=draft_ask(ctx), casual=casual, formal=formal, generator=self.name)
         except Exception:
             return self._fallback.generate(ctx)
 

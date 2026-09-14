@@ -40,7 +40,7 @@ export function Drawer({
         type="button"
         aria-label="Close panel"
         onClick={onClose}
-        className="absolute inset-0 cursor-default bg-ink/10"
+        className="absolute inset-0 cursor-default bg-scrim"
         tabIndex={-1}
       />
       <div

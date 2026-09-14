@@ -1,15 +1,15 @@
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
-import { useNudgeRequest, useRequest, useTransitionRequest } from '../api/queries';
+import { useContact, useNudgeRequest, useRequest, useTransitionRequest } from '../api/queries';
 import type { EventOut, RequestDetail, Status } from '../api/types';
 import { Button } from '../components/Button';
-import { Disclosure } from '../components/Disclosure';
 import { ErrorState, Skeleton } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
 import { Popover } from '../components/Popover';
+import { ProfileBlocks } from '../components/ProfileBlocks';
 import { StatusPill } from '../components/StatusPill';
-import { StrengthBar } from '../components/StrengthBar';
+import { Tabs } from '../components/Tabs';
 import { firstName, formatDate, formatDateTime, formatRelative } from '../lib/format';
 import { STATUS_LABELS, eventSentence } from '../lib/status';
 
@@ -46,6 +46,7 @@ function RequestView({ r }: { r: RequestDetail }) {
       ),
     [r.events],
   );
+  const [tab, setTab] = useState<'timeline' | 'candidate'>('timeline');
 
   return (
     <div>
@@ -72,44 +73,130 @@ function RequestView({ r }: { r: RequestDetail }) {
             contactFirst={contactFirst}
             employeeFirst={employeeFirst}
           />
-          <h2 className="mt-5 text-[13px] font-semibold text-ink">Timeline</h2>
-          <ol className="mt-1">
-            {events.map((e, i) => {
-              const latest = i === events.length - 1;
-              return (
-                <li
-                  key={e.id}
-                  className="grid grid-cols-[10px_minmax(0,1fr)_auto] items-start gap-x-2.5 border-b border-line py-2 text-[13px]"
-                >
-                  <span
-                    aria-hidden
-                    className={`mt-[7px] size-1.5 rounded-full ${latest ? 'bg-cobalt' : 'bg-line'}`}
-                  />
-                  <div className="min-w-0">
-                    <span className="font-medium text-ink">{e.actor_label}</span>{' '}
-                    <span className="text-carbon">
-                      {eventSentence(e.from_status, e.to_status, contactFirst)}
-                    </span>
-                    {e.note ? (
-                      <blockquote className="mt-1 border-l-2 border-line pl-2 text-[12px] tracking-normal text-muted">
-                        “{e.note}”
-                      </blockquote>
-                    ) : null}
-                  </div>
-                  <time
-                    dateTime={e.created_at}
-                    title={e.created_at}
-                    className="whitespace-nowrap text-[12px] tracking-normal text-muted tnum"
-                  >
-                    {formatDateTime(e.created_at)}
-                  </time>
-                </li>
-              );
-            })}
-          </ol>
+          <div className="mt-4 flex h-9 items-stretch border-b border-line">
+            <Tabs
+              label="Request detail"
+              value={tab}
+              onChange={setTab}
+              options={[
+                { value: 'timeline', label: 'Timeline', count: events.length },
+                { value: 'candidate', label: 'Candidate' },
+              ]}
+            />
+          </div>
+          {tab === 'timeline' ? (
+            <Timeline r={r} events={events} contactFirst={contactFirst} />
+          ) : (
+            <CandidateProfile r={r} />
+          )}
         </section>
       </div>
     </div>
+  );
+}
+
+/** Events as blocks on a rail: sentence, time, then any note or the message that went out. */
+function Timeline({
+  r,
+  events,
+  contactFirst,
+}: {
+  r: RequestDetail;
+  events: EventOut[];
+  contactFirst: string;
+}) {
+  const employeeFirst = firstName(r.employee.full_name);
+  const opened = events.find((e) => e.to_status === 'requested' && e.from_status === null);
+  return (
+    <ol className="mt-4 flex flex-col gap-5" aria-label="Timeline">
+      {events.map((e, i) => {
+        const latest = i === events.length - 1;
+        const showMessage = e.id === opened?.id && r.outreach_casual.trim() !== '';
+        return (
+          <li key={e.id} className="relative pl-6">
+            {!latest ? (
+              <span
+                aria-hidden
+                className="absolute left-[4.5px] top-[18px] -bottom-5 w-px bg-line"
+              />
+            ) : null}
+            <span
+              aria-hidden
+              className={`absolute left-0 top-[5px] size-2.5 rounded-full ring-2 ring-canvas ${
+                latest ? 'bg-cobalt' : 'bg-line'
+              }`}
+            />
+            <div className="flex items-baseline justify-between gap-4 text-[14px] leading-5">
+              <p className="min-w-0 text-carbon">
+                <span className="font-semibold text-ink">{e.actor_label}</span>{' '}
+                {eventSentence(e.from_status, e.to_status, contactFirst)}
+              </p>
+              <time
+                dateTime={e.created_at}
+                title={formatDateTime(e.created_at)}
+                className="shrink-0 whitespace-nowrap text-[12px] tracking-normal text-muted tnum"
+              >
+                {formatRelative(e.created_at)}
+              </time>
+            </div>
+            {e.note ? (
+              <div className="mt-2 rounded-[10px] bg-haze px-3 py-2.5 text-[13px] leading-5 text-carbon">
+                {e.note}
+              </div>
+            ) : null}
+            {showMessage ? (
+              <div className="mt-2 rounded-[10px] bg-haze px-3 py-2.5">
+                <p className="text-[12px] tracking-normal text-muted">
+                  Message sent to {employeeFirst}
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-[13px] leading-5 text-carbon">
+                  {r.outreach_casual}
+                </p>
+              </div>
+            ) : null}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/** The candidate's full profile, fetched separately: the request only carries a brief. */
+function CandidateProfile({ r }: { r: RequestDetail }) {
+  const contact = useContact(r.contact.id);
+  return (
+    <section aria-labelledby="candidate-title" className="mt-4">
+      <div className="mb-2 flex items-baseline justify-between gap-4">
+        <h2 id="candidate-title" className="sr-only">
+          Candidate
+        </h2>
+        <Link
+          to={`/roles/${r.role.id}?contact=${r.contact.id}`}
+          className="link text-[12px] tracking-normal"
+        >
+          Open profile
+        </Link>
+      </div>
+      {contact.isError ? (
+        <ErrorState title="Couldn't load the candidate's profile" error={contact.error} />
+      ) : null}
+      {contact.isPending ? (
+        <div className="space-y-2" aria-busy="true" aria-label="Loading profile">
+          <Skeleton className="h-3.5 w-[60%]" />
+          <Skeleton className="h-3.5 w-[45%]" />
+          <Skeleton className="h-3.5 w-[52%]" />
+        </div>
+      ) : null}
+      {contact.data ? (
+        <div className="space-y-4">
+          <ProfileBlocks
+            experiences={contact.data.experiences}
+            education={contact.data.education}
+            skills={contact.data.skills}
+          />
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -155,7 +242,6 @@ function Attributes({ r }: { r: RequestDetail }) {
         <Row label="Their connection">
           {r.connection ? (
             <>
-              <StrengthBar value={r.connection.strength} />
               {r.connection.shared_history ? (
                 <span className="block text-[12px] font-medium tracking-normal text-muted">
                   {r.connection.shared_history}
@@ -180,22 +266,30 @@ function Attributes({ r }: { r: RequestDetail }) {
           </span>
         </Row>
       </dl>
-      <Disclosure summary="Why this candidate" className="mt-3 border-t border-line pt-3">
+      <section aria-labelledby="why-title" className="mt-4 border-t border-line pt-4">
+        <h2 id="why-title" className="text-[13px] font-semibold text-ink">
+          Why this candidate
+        </h2>
         {r.reasons.length === 0 ? (
-          <p className="text-[13px] text-muted">No stored match signals for this pair.</p>
+          <p className="mt-1 text-[13px] text-muted">No stored match signals for this pair.</p>
         ) : (
-          <dl className="divide-y divide-line text-[13px]">
+          <dl className="mt-1 divide-y divide-line">
             {r.reasons.map((reason, i) => (
-              <div key={i} className="py-1.5">
-                <dt className="font-medium text-ink">{reason.label}</dt>
-                {reason.detail ? (
-                  <dd className="text-[12px] tracking-normal text-muted">{reason.detail}</dd>
-                ) : null}
+              <div
+                key={i}
+                className="grid grid-cols-[104px_minmax(0,1fr)] items-start gap-x-3 py-[7px]"
+              >
+                <dt className="text-[12px] leading-[18px] tracking-normal text-muted">
+                  {reason.label}
+                </dt>
+                <dd className="min-w-0 text-[13px] leading-[18px] font-medium text-ink">
+                  {reason.detail ?? '—'}
+                </dd>
               </div>
             ))}
           </dl>
         )}
-      </Disclosure>
+      </section>
     </aside>
   );
 }
@@ -232,7 +326,7 @@ function buildSteps(
           : 0;
 
   const labels = [
-    'Asked',
+    `Asked ${employeeFirst} to reach out`,
     `${employeeFirst} reached out`,
     `${contactFirst} answered`,
     'Closed',
