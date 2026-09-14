@@ -102,6 +102,7 @@ def build_context(
     employee: Employee,
     connection: Connection | None,
     reasons: list[str],
+    recruiter_name: str = "",
 ) -> OutreachContext:
     return OutreachContext(
         contact_full_name=contact.full_name,
@@ -114,6 +115,7 @@ def build_context(
         employee_first_name=employee.full_name.split(" ")[0],
         shared_history=shared_history(connection),
         fit_reasons=reasons,
+        recruiter_first_name=recruiter_name.split(" ")[0] if recruiter_name else "",
     )
 
 
@@ -146,7 +148,12 @@ class ReferralService:
     # ---- create ------------------------------------------------------------------------------
 
     def preview(
-        self, *, contact_id: uuid.UUID, role_id: uuid.UUID, employee_id: uuid.UUID | None
+        self,
+        *,
+        contact_id: uuid.UUID,
+        role_id: uuid.UUID,
+        employee_id: uuid.UUID | None,
+        recruiter_name: str = "",
     ) -> tuple[Connection, OutreachContext, Drafts]:
         """What an ask would send, without sending it."""
         contact = self.db.get(Contact, contact_id)
@@ -168,6 +175,7 @@ class ReferralService:
             employee=employee,
             connection=connection,
             reasons=fit_reasons(self.db, contact_id, role_id),
+            recruiter_name=recruiter_name,
         )
         return connection, ctx, self.generator.generate(ctx)
 
@@ -179,6 +187,7 @@ class ReferralService:
         employee_id: uuid.UUID | None,
         requested_by: str,
         message: str | None = None,
+        recruiter_name: str = "",
     ) -> ReferralRequest:
         contact = self.db.get(Contact, contact_id)
         role = self.db.get(Role, role_id)
@@ -213,17 +222,23 @@ class ReferralService:
             employee=employee,
             connection=connection,
             reasons=fit_reasons(self.db, contact_id, role_id),
+            recruiter_name=recruiter_name,
         )
         drafts = self.generator.generate(ctx)
         if message and message.strip():
-            drafts = Drafts(casual=message.strip(), formal=drafts.formal, generator="recruiter")
+            drafts = Drafts(
+                ask=message.strip(),
+                casual=drafts.casual,
+                formal=drafts.formal,
+                generator="recruiter",
+            )
         req = ReferralRequest(
             contact_id=contact_id,
             role_id=role_id,
             employee_id=employee.id,
             status=Status.REQUESTED.value,
             requested_by=requested_by,
-            outreach_casual=drafts.casual,
+            outreach_casual=drafts.ask,  # what the employee received
             outreach_formal=drafts.formal,
         )
         self.db.add(req)
@@ -385,7 +400,7 @@ class ReferralService:
             reasons=fit_reasons(self.db, req.contact_id, req.role_id),
         )
         drafts = self.generator.generate(ctx)
-        req.outreach_casual, req.outreach_formal = drafts.casual, drafts.formal
+        req.outreach_casual, req.outreach_formal = drafts.ask, drafts.formal
         self._notify(req, ctx, drafts, employee)
 
     # ---- internals ---------------------------------------------------------------------------
@@ -437,7 +452,7 @@ class ReferralService:
             employee_id=employee.id,
             channel="slack",
             recipient=recipient or "(no slack user)",
-            body=drafts.casual,
+            body=drafts.ask,
             blocks=blocks,
             external_channel_id=result.channel_id if result else None,
             external_ts=result.ts if result else None,

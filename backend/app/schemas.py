@@ -210,6 +210,7 @@ class AskPreviewIn(BaseModel):
 class AskPreviewOut(BaseModel):
     employee: EmployeeBrief
     connection: ConnectionOut
+    ask: str
     casual: str
     formal: str
     reasons: list[dict[str, Any]]

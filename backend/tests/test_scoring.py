@@ -96,3 +96,25 @@ def test_casual_draft_reads_naturally() -> None:
     text = draft_casual(ctx)
     assert text.startswith("Hey Priya! Feels like ages since we overlapped at Stripe (2019-2024)")
     assert "Software Engineer, Infrastructure" in text
+
+
+def test_ask_draft_is_concise_and_signed() -> None:
+    from app.services.outreach import OutreachContext, draft_ask
+
+    ctx = OutreachContext(
+        contact_full_name="Kelly Brooks",
+        contact_title="Forward Deployed Engineer",
+        contact_company="Notion",
+        role_title="AI Support Engineer",
+        role_team="Support Engineering",
+        role_location="San Francisco",
+        role_url="https://x",
+        employee_first_name="Frank",
+        shared_history="Overlapped at DoorDash (2020-2022)",
+        recruiter_first_name="Anthony",
+    )
+    text = draft_ask(ctx)
+    assert text.startswith("Hi Frank, would you be willing to refer Kelly Brooks")
+    assert "AI Support Engineer" in text and "overlapped at DoorDash" in text
+    assert text.endswith("Thanks,\nAnthony")
+    assert len(text) < 320

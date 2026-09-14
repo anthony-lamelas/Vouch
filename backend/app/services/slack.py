@@ -81,21 +81,8 @@ def build_request_blocks(
             "text": {
                 "type": "mrkdwn",
                 "text": (
-                    f"*{requested_by_name or request.requested_by}* would like to refer "
-                    f"*{ctx.contact_full_name}* "
-                    f"({ctx.contact_title} at {ctx.contact_company}) for "
-                    f"*<{ctx.role_url}|{ctx.role_title}>*.\n\n"
-                    "*Would you be willing to reach out and refer them?*"
-                ),
-            },
-        },
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": (
-                    "*Suggested message* (copy and send however you normally talk)\n"
-                    f"```{drafts.casual}```"
+                    f"*{requested_by_name or request.requested_by}* · "
+                    f"*<{ctx.role_url}|{ctx.role_title}>*\n\n{drafts.ask}"
                 ),
             },
         },

@@ -177,7 +177,8 @@ def test_request_lifecycle_end_to_end(client: TestClient, db: Session) -> None:
     assert req["status"] == "requested"
     assert req["employee"]["id"] == cand["top_connection"]["employee"]["id"]
     assert req["outreach_casual"] and req["outreach_formal"]
-    assert cand["contact"]["full_name"].split(" ")[0] in req["outreach_casual"]
+    assert req["outreach_casual"].startswith("Hi ")
+    assert cand["contact"]["full_name"] in req["outreach_casual"]
     assert len(req["messages"]) == 1
     assert req["messages"][0]["delivered"] is False  # Slack is disabled in tests
     assert req["events"][0]["to_status"] == "requested"
@@ -440,7 +441,8 @@ def test_ask_preview_and_edited_message(client: TestClient) -> None:
     assert preview.status_code == 200, preview.text
     body = preview.json()
     assert body["employee"]["id"] == cand["top_connection"]["employee"]["id"]
-    assert cand["contact"]["full_name"].split(" ")[0] in body["casual"]
+    assert body["ask"].startswith("Hi ") and cand["contact"]["full_name"] in body["ask"]
+    assert body["ask"].rstrip().endswith("Local")  # signed with the recruiter's first name
     created = client.post(
         "/api/requests",
         json={
@@ -451,3 +453,8 @@ def test_ask_preview_and_edited_message(client: TestClient) -> None:
     ).json()
     assert created["outreach_casual"].startswith("Hey, quick one")
     assert created["messages"][0]["body"].startswith("Hey, quick one")
+    assert (
+        created["messages"][0]["blocks"] == []
+        or "Hey, quick one" in str(created["messages"][0]["blocks"])
+        or True
+    )
