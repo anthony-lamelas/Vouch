@@ -94,7 +94,5 @@ def test_casual_draft_reads_naturally() -> None:
         fit_reasons=["4 of 8 required skills"],
     )
     text = draft_casual(ctx)
-    assert text.startswith(
-        "Hey Priya! Feels like ages since we overlapped at Stripe (2019-2024)"
-    )
+    assert text.startswith("Hey Priya! Feels like ages since we overlapped at Stripe (2019-2024)")
     assert "Software Engineer, Infrastructure" in text
