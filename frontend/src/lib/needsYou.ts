@@ -68,7 +68,7 @@ export function computeNeedsYou(requests: RequestSummary[]): NeedsYouItem[] {
       count: stale.length,
       lead: `${stale.length} requests have gone quiet,`,
       action: 'nudge them',
-      to: '/pipeline?scope=mine&active_only=1',
+      to: '/pipeline?scope=mine',
     });
   }
 

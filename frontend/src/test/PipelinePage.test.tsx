@@ -90,7 +90,7 @@ describe('PipelinePage', () => {
     const requestUrl = fetchMock.mock.calls
       .map((c) => urlOf(c[0]))
       .find((u) => u.includes('/api/requests'));
-    expect(requestUrl).toBe('/api/requests?mine=true&limit=200');
+    expect(requestUrl).toBe('/api/requests?active_only=true&mine=true&limit=200');
   });
 
   it('sorts by a column header, flips on the second click, and reads sort from the URL', async () => {
@@ -154,7 +154,7 @@ describe('PipelinePage', () => {
 
   it('offers the six statuses in the Status picker and mirrors a deep link as a chip', async () => {
     const user = userEvent.setup();
-    renderAt('/pipeline?scope=mine&status=candidate_interested&active_only=1');
+    renderAt('/pipeline?scope=mine&status=candidate_interested');
     await screen.findByRole('table');
     expect(screen.getByRole('button', { name: 'Remove Candidate interested' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Clear all' })).toBeInTheDocument();

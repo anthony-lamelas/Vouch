@@ -471,10 +471,22 @@ function Actions({
         </span>
       ) : null}
       {r.status === 'candidate_interested' ? (
-        <span className="text-[13px] font-medium text-yes-text">
-          {contactFirst} is interested.
-          {bookingSent ? ` ${employeeFirst} has the booking link to pass on.` : ''}
-        </span>
+        <>
+          <span className="text-[13px] font-medium text-yes-text">
+            {contactFirst} is interested.
+            {bookingSent ? ` ${employeeFirst} has the booking link to pass on.` : ''}
+          </span>
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={transition.isPending}
+            onClick={() => transition.mutate({ to_status: 'closed', note: 'Interview scheduled' })}
+          >
+            {transition.isPending && transition.variables?.note === 'Interview scheduled'
+              ? 'Saving'
+              : 'Interview scheduled'}
+          </Button>
+        </>
       ) : null}
       {declined ? (
         <span className="text-[13px] font-medium text-needs-text">
