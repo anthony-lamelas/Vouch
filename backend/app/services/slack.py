@@ -160,6 +160,19 @@ def status_blocks(
     if status == Status.CANDIDATE_INTERESTED:
         thanks = f"Great news, thanks{' ' + employee_first if employee_first else ''}!"
         recruiter = recruiter_first or "the recruiter"
+        text = (
+            f"{thanks} Pass {contact_first} the message below so they can book a screen "
+            f"with {recruiter}."
+            if booking_message
+            else f"{thanks} {recruiter} will take it from here."
+        )
+        kept.append(
+            {
+                "type": "section",
+                "block_id": "vouch_status",
+                "text": {"type": "mrkdwn", "text": text},
+            }
+        )
         if booking_message:
             kept.append(
                 {
@@ -174,17 +187,13 @@ def status_blocks(
                     },
                 }
             )
-            text = (
-                f"{thanks} Pass {contact_first} the message above so they can book a screen "
-                f"with {recruiter}."
-            )
-        else:
-            text = f"{thanks} {recruiter} will take it from here."
+    if status == Status.CANDIDATE_DECLINED:
+        who = f" {employee_first}" if employee_first else ""
         kept.append(
             {
                 "type": "section",
                 "block_id": "vouch_status",
-                "text": {"type": "mrkdwn", "text": text},
+                "text": {"type": "mrkdwn", "text": f"No worries, thanks for reaching out{who}."},
             }
         )
     if status == Status.EMPLOYEE_DECLINED:
@@ -194,7 +203,7 @@ def status_blocks(
             {
                 "type": "section",
                 "block_id": "vouch_status",
-                "text": {"type": "mrkdwn", "text": f"{thanks}{why} I've passed that along."},
+                "text": {"type": "mrkdwn", "text": f"{thanks}{why}"},
             }
         )
     buttons = action_buttons(status, request_id, contact_first)
