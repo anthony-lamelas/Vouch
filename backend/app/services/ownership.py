@@ -1,5 +1,6 @@
 """Who owns a role. Ashby's public board doesn't expose recruiters, so ownership is assigned by
-department: the demo recruiter owns engineering-adjacent reqs, synthetic recruiters own the rest."""
+department: the demo team owns Research & Development, synthetic recruiters own the rest. Roles
+and requests are shared across the demo team, so every teammate sees the same 'mine'."""
 
 from __future__ import annotations
 
@@ -21,8 +22,8 @@ SYNTHETIC_RECRUITERS: Final[dict[str, tuple[str, str]]] = {
     "General & Administrative": ("Priyanka Shah", "priyanka.shah@cognition.ai"),
 }
 FALLBACK_RECRUITER: Final[tuple[str, str]] = ("Sam Okafor", "sam.okafor@cognition.ai")
-# The demo login owns these reqs (all regional variants); everyone else is synthetic.
-DEMO_TITLE_PREFIXES: Final[tuple[str, ...]] = ("AI Support Engineer", "Applied AI Engineer")
+# The demo team owns every role in this department; everyone else is synthetic.
+DEMO_DEPARTMENT: Final[str] = "Research & Development"
 
 
 def name_from_email(email: str) -> str:
@@ -33,9 +34,33 @@ def name_from_email(email: str) -> str:
     return " ".join(words) or email
 
 
+def demo_team(settings: Settings) -> dict[str, str]:
+    """email -> display name for the demo login and their teammates, demo login first."""
+    team: dict[str, str] = {}
+    if settings.demo_recruiter_email:
+        email = settings.demo_recruiter_email
+        team[email] = settings.demo_recruiter_name or name_from_email(email)
+    for entry in settings.demo_recruiter_teammates.split(","):
+        entry = entry.strip()
+        if not entry:
+            continue
+        email, _, name = entry.partition(":")
+        email = email.strip()
+        if email and email not in team:
+            team[email] = name.strip() or name_from_email(email)
+    return team
+
+
+def owning_emails(user_email: str, settings: Settings) -> set[str]:
+    """Whose roles and requests count as this user's: the whole demo team for a teammate,
+    otherwise just themselves."""
+    team = demo_team(settings)
+    return set(team) if user_email in team else {user_email}
+
+
 def default_owner(department: str, settings: Settings, title: str = "") -> tuple[str, str]:
     """Returns (owner_name, owner_email) for a role."""
-    if settings.demo_recruiter_email and title.strip().startswith(DEMO_TITLE_PREFIXES):
+    if settings.demo_recruiter_email and department == DEMO_DEPARTMENT:
         email = settings.demo_recruiter_email
         return settings.demo_recruiter_name or name_from_email(email), email
     return SYNTHETIC_RECRUITERS.get(department, FALLBACK_RECRUITER)
@@ -51,10 +76,9 @@ def split_name(full_name: str) -> tuple[str, str]:
 def predefined_recruiters(settings: Settings) -> list[tuple[str, str, str]]:
     """(first_name, last_name, email) for every predefined recruiter, demo login first."""
     out: list[tuple[str, str, str]] = []
-    if settings.demo_recruiter_email:
-        name = settings.demo_recruiter_name or name_from_email(settings.demo_recruiter_email)
+    for email, name in demo_team(settings).items():
         first, last = split_name(name)
-        out.append((first, last, settings.demo_recruiter_email))
+        out.append((first, last, email))
     seen = {e for _, _, e in out}
     for full, email in SYNTHETIC_RECRUITERS.values():
         if email in seen:

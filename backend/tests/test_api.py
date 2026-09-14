@@ -58,16 +58,54 @@ def test_role_ownership_and_mine_filters(client: TestClient) -> None:
     assert all(r["owner_email"] and r["owner_name"] for r in all_roles)
     mine = client.get("/api/roles", params={"mine": True}).json()
     assert mine and all(r["is_mine"] for r in mine)
-    assert all(r["title"].startswith(("AI Support Engineer", "Applied AI Engineer")) for r in mine)
+    assert {r["department"] for r in mine} == {"Research & Development"}
+    assert len(mine) == sum(1 for r in all_roles if r["department"] == "Research & Development")
     assert len(mine) < len(all_roles)
     others = [r for r in all_roles if not r["is_mine"]]
     assert {r["owner_name"] for r in others} >= {"Dana Whitfield", "Chris Nakamura"}
 
+    # The demo team's own pipeline, ready to show: a few asks in a few states.
     my_requests = client.get("/api/requests", params={"mine": True}).json()
-    assert my_requests["total"] == 0  # the seed leaves the demo login's pipeline empty
+    assert my_requests["total"] == 5
     assert all(item["is_mine"] for item in my_requests["items"])
+    statuses = {item["status"] for item in my_requests["items"]}
+    assert statuses == {"requested", "employee_accepted", "employee_declined"}
+    assert all(
+        item["role"]["department"] == "Research & Development" for item in my_requests["items"]
+    )
     everything = client.get("/api/requests").json()
     assert everything["total"] > my_requests["total"]
+
+    # At least one open ask is on someone several employees know, so a decline can re-route.
+    waiting = [i for i in my_requests["items"] if i["status"] == "requested"]
+    counts = [
+        len(client.get(f"/api/contacts/{i['contact']['id']}").json()["connections"])
+        for i in waiting
+    ]
+    assert max(counts) >= 3
+    # The employee who passed left colleagues to ask instead.
+    passed = next(i for i in my_requests["items"] if i["status"] == "employee_declined")
+    detail = client.get(f"/api/requests/{passed['id']}").json()
+    assert detail["alternatives"]
+    assert detail["events"][-1]["note"].startswith("Not a fit for this role")
+
+
+def test_teammates_share_the_demo_pipeline(client: TestClient) -> None:
+    as_teammate = {"X-Demo-User": "teammate@vouch.local"}
+    assert client.get("/api/me", headers=as_teammate).json()["name"] == "Team Mate"
+    mine = client.get("/api/roles", params={"mine": True}).json()
+    theirs = client.get("/api/roles", params={"mine": True}, headers=as_teammate).json()
+    assert {r["id"] for r in theirs} == {r["id"] for r in mine}
+    assert all(r["is_mine"] for r in theirs)
+    my_requests = client.get("/api/requests", params={"mine": True}).json()
+    their_requests = client.get("/api/requests", params={"mine": True}, headers=as_teammate).json()
+    assert {r["id"] for r in their_requests["items"]} == {r["id"] for r in my_requests["items"]}
+    assert all(r["is_mine"] for r in their_requests["items"])
+    # Someone outside the team sees none of it as theirs.
+    outsider = client.get(
+        "/api/roles", params={"mine": True}, headers={"X-Demo-User": "someone@example.com"}
+    ).json()
+    assert outsider == []
 
 
 def test_candidates_ranked_with_reasons(client: TestClient) -> None:

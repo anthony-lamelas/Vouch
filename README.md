@@ -68,7 +68,8 @@ All settings are environment variables (see [`.env.example`](.env.example)). The
 | `SLACK_DEMO_USER_ID` | Fallback Slack user when no email match is found |
 | `ANTHROPIC_API_KEY`, `OUTREACH_MODE=claude` | Optional Claude-tailored drafts (template fallback) |
 | `ADMIN_TOKEN` | Protects `POST /api/admin/reset-demo` and `POST /api/admin/sync-roles` |
-| `DEMO_RECRUITER_EMAIL`, `DEMO_RECRUITER_NAME` | The demo login: owns the R&D and Customer Engineering roles in the seed and is shown by name (derived from the email unless set) |
+| `DEMO_RECRUITER_EMAIL`, `DEMO_RECRUITER_NAME` | The demo login: owns the Research & Development roles in the seed and is shown by name (derived from the email unless set) |
+| `DEMO_RECRUITER_TEAMMATES` | Other logins on the demo team, comma-separated `email:Name`. Teammates share the same "My roles" and "My requests", so a reviewer signing in with their own email sees the demo pipeline |
 | `DEMO_BOOKING_URL` | Scheduling link (Google appointment page, Calendly) handed to the employee once the candidate is interested, so the candidate books a recruiter screen. Defaults to the demo recruiter's page and applies to every request in the demo; per-recruiter links live on `recruiter.booking_url` |
 
 ## Where the loop ends

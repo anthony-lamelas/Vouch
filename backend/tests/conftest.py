@@ -21,6 +21,7 @@ os.environ.update(
         "ADMIN_TOKEN": "test-admin-token",
         "APP_BASE_URL": "http://testserver",
         "DEMO_RECRUITER_EMAIL": "recruiter@vouch.local",
+        "DEMO_RECRUITER_TEAMMATES": "teammate@vouch.local:Team Mate",
     }
 )
 
