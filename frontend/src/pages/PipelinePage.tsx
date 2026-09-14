@@ -160,7 +160,7 @@ export function PipelinePage() {
           type="search"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search candidate, role or employee"
+          placeholder="Search candidate, role, or employee"
           aria-label="Search requests"
           className="field h-8 w-[240px] text-[13px]"
         />

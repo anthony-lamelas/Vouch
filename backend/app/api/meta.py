@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 from fastapi import APIRouter
 from sqlalchemy import func, select, text
 
@@ -15,7 +17,8 @@ router = APIRouter(tags=["meta"])
 @router.get("/healthz", include_in_schema=False)
 def healthz(db: DB) -> dict[str, str]:
     db.execute(text("SELECT 1"))
-    return {"status": "ok"}
+    # Render exposes the deployed commit; handy for confirming which build is live.
+    return {"status": "ok", "commit": os.environ.get("RENDER_GIT_COMMIT", "")[:7]}
 
 
 @router.get("/config", response_model=PublicConfig)

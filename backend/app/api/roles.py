@@ -18,6 +18,7 @@ from app.schemas import (
     RoleDetail,
     RoleSummary,
 )
+from app.services.geo import cities_in_regions, regions_of
 from app.services.lifecycle import ACTIVE_STATUSES, Status
 
 router = APIRouter(prefix="/roles", tags=["roles"])
@@ -96,12 +97,14 @@ def list_candidates(
     company_tiers: Annotated[list[int] | None, Query()] = None,
     school_tiers: Annotated[list[int] | None, Query()] = None,
     exclude_requested: bool = False,
+    same_region: bool = False,
     q: str | None = None,
     min_score: Annotated[float, Query(ge=0, le=1)] = 0.0,
     limit: Annotated[int, Query(ge=1, le=100)] = 25,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> CandidatePage:
-    if db.get(Role, role_id) is None:
+    role = db.get(Role, role_id)
+    if role is None:
         raise HTTPException(status_code=404, detail="Role not found")
 
     stmt = (
@@ -122,6 +125,12 @@ def list_candidates(
         school_set.update(
             db.scalars(select(SchoolTier.name).where(SchoolTier.tier.in_(school_tiers)))
         )
+    if same_region:
+        # Only people currently in the role's region(s). A role with no recognisable location
+        # (or a remote-anywhere posting) keeps everyone.
+        regions = regions_of(role.location)
+        if regions:
+            stmt = stmt.where(Contact.location.in_(cities_in_regions(regions)))
     if exclude_requested:
         open_contacts = select(ReferralRequest.contact_id).where(
             ReferralRequest.status.in_([st.value for st in ACTIVE_STATUSES])

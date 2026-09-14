@@ -43,8 +43,12 @@ The breakdown is stored on the edge so the UI can explain the pick.
 
 ### 3.2 Match score (per contact × role, precomputed)
 ```
-score = 0.35 * skills + 0.25 * fit + 0.20 * company_tier + 0.10 * school_tier + 0.10 * best_strength
+score = 0.30 * skills + 0.20 * fit + 0.15 * company_tier + 0.05 * school_tier + 0.10 * best_strength + 0.20 * location
 skills       = |contact.skills ∩ role.required_skills| / |role.required_skills|
+location     = 1.0 same city as the role, 0.5 same region (North America, Europe, APAC, Middle East, LatAm), 0 elsewhere;
+               remote roles: 1.0 own region, 0.6 elsewhere; "Remote" contacts 0.5. Current city only (no office history).
+               Always emitted as a reason so a mismatch is visible. Candidate lists default to the role's region
+               (`same_region=true`); the "Same region" pill widens to everyone.
 fit          = job-family and seniority proximity between contact's current title and the role
 company_tier = 1.0 if any tier-1 employer, 0.6 tier-2, else 0
 school_tier  = 1.0 tier-1 school, 0.6 tier-2, else 0

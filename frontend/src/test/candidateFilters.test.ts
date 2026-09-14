@@ -28,6 +28,22 @@ describe('candidate filter state', () => {
     expect(parseFilters(params)).toEqual(state);
   });
 
+  it('keeps to the role region by default and only writes the URL when widened', () => {
+    expect(parseFilters(new URLSearchParams()).sameRegion).toBe(true);
+    expect(serializeFilters(EMPTY_FILTERS).has('all_regions')).toBe(false);
+    const wide = filtersReducer(
+      { ...EMPTY_FILTERS, offset: 50 },
+      { type: 'setSameRegion', on: false },
+    );
+    expect(wide.offset).toBe(0);
+    const params = serializeFilters(wide);
+    expect(params.get('all_regions')).toBe('1');
+    expect(parseFilters(params).sameRegion).toBe(false);
+    // Clearing filters is about filters; the region view stays as the recruiter left it.
+    expect(filtersReducer(wide, { type: 'clear' }).sameRegion).toBe(false);
+    expect(activeFilterCount(wide)).toBe(0);
+  });
+
   it('resets paging when a filter changes, but not when paging', () => {
     const paged = filtersReducer(EMPTY_FILTERS, { type: 'setPage', offset: 50 });
     expect(paged.offset).toBe(50);
