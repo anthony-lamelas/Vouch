@@ -103,6 +103,9 @@ class RoleSummary(ORMModel):
     required_skills: list[str]
     published_at: datetime | None
     job_url: str
+    owner_email: str | None = None
+    owner_name: str | None = None
+    is_mine: bool = False
     strong_match_count: int = 0
     active_request_count: int = 0
 
@@ -121,6 +124,8 @@ class RoleBrief(ORMModel):
     team: str
     department: str
     location: str
+    owner_email: str | None = None
+    owner_name: str | None = None
 
 
 class EventOut(BaseModel):
@@ -158,6 +163,7 @@ class RequestSummary(BaseModel):
     # Days since the employee agreed to reach out with no outcome yet; stale past STALE_AFTER_DAYS.
     days_waiting: int | None = None
     stale: bool = False
+    is_mine: bool = False
 
 
 class RequestDetail(RequestSummary):

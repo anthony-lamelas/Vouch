@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     seed_random_seed: int = 42
     seed_contact_count: int = 3000
     seed_employee_count: int = 40
+    demo_recruiter_email: str = Field(
+        default="", description="Login email that owns the R&D and Customer Engineering roles"
+    )
+    demo_recruiter_name: str = ""
     demo_employee_email: str = Field(
         default="", description="Email for the seeded 'Bob' employee; defaults to a synthetic one"
     )

@@ -20,6 +20,7 @@ os.environ.update(
         "SLACK_BOT_TOKEN": "",
         "ADMIN_TOKEN": "test-admin-token",
         "APP_BASE_URL": "http://testserver",
+        "DEMO_RECRUITER_EMAIL": "recruiter@vouch.local",
     }
 )
 

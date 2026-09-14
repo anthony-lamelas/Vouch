@@ -136,7 +136,7 @@ def seed_database(db: Session, settings: Settings, *, prefer_live_roles: bool = 
     db.flush()
 
     postings, source = fetch_or_snapshot(prefer_live=prefer_live_roles)
-    sync_roles(db, postings, source=source)
+    sync_roles(db, postings, source=source, settings=settings)
     scores = recompute_match_scores(db)
     requests = seed_demo_requests(db)
     db.commit()
@@ -262,7 +262,7 @@ def seed_demo_requests(db: Session) -> int:
             role_id=role.id,
             employee_id=employee.id,
             status=steps[-1][0].value,
-            requested_by=RECRUITER,
+            requested_by=role.owner_email or RECRUITER,
             outreach_casual=drafts.casual,
             outreach_formal=drafts.formal,
         )
@@ -283,9 +283,9 @@ def seed_demo_requests(db: Session) -> int:
                 employee = nxt.employee
                 req.employee_id = employee.id
             elif status == Status.REQUESTED:
-                actor, note = RECRUITER, f"Asked {employee.full_name}"
+                actor, note = role.owner_email or RECRUITER, f"Asked {employee.full_name}"
             elif status == Status.CLOSED:
-                actor = RECRUITER
+                actor = role.owner_email or RECRUITER
                 req.closed_outcome = note
             else:
                 actor = employee_actor(employee)

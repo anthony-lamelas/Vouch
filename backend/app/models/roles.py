@@ -32,6 +32,8 @@ class Role(Base):
     job_family: Mapped[str] = mapped_column(String(40), nullable=False)
     seniority: Mapped[str] = mapped_column(String(20), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    owner_email: Mapped[str | None] = mapped_column(String(255), index=True)
+    owner_name: Mapped[str | None] = mapped_column(String(160))
     synced_at: Mapped[datetime] = created_at_col()
 
     match_scores: Mapped[list["MatchScore"]] = relationship(back_populates="role")
