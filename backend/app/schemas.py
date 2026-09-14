@@ -155,6 +155,9 @@ class RequestSummary(BaseModel):
     created_at: datetime
     updated_at: datetime
     last_event_at: datetime | None = None
+    # Days since the employee agreed to reach out with no outcome yet; stale past STALE_AFTER_DAYS.
+    days_waiting: int | None = None
+    stale: bool = False
 
 
 class RequestDetail(RequestSummary):

@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { useRequest, useTransitionRequest } from '../api/queries';
-import type { DeclineReason, RequestDetail, Status } from '../api/types';
+import type { RequestDetail, Status } from '../api/types';
 import { Button } from '../components/Button';
 import { Chip } from '../components/Chip';
 import { CopyButton } from '../components/CopyButton';
@@ -13,7 +13,7 @@ import { ErrorState, Skeleton } from '../components/EmptyState';
 import { PageHeader, SectionTitle } from '../components/PageHeader';
 import { StatusPill } from '../components/StatusPill';
 import { formatDate, formatDateTime, formatPercent, formatRelative } from '../lib/format';
-import { DECLINE_REASON_LABELS, STATUS_LABELS } from '../lib/status';
+import { STATUS_LABELS, eventSentence } from '../lib/status';
 
 export function RequestPage() {
   const { id = '' } = useParams();
@@ -36,6 +36,7 @@ export function RequestPage() {
 }
 
 function RequestView({ r }: { r: RequestDetail }) {
+  const contactFirst = r.contact.full_name.split(' ')[0] ?? r.contact.full_name;
   const events = useMemo(
     () =>
       [...r.events].sort(
@@ -68,6 +69,12 @@ function RequestView({ r }: { r: RequestDetail }) {
         subtitle={
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <StatusPill status={r.status} />
+            {r.stale ? (
+              <span className="text-[12.5px] font-medium text-amber-700">
+                No reply from {contactFirst} in {r.days_waiting} days. Nudge{' '}
+                {r.employee.full_name.split(' ')[0]} in Slack, or close the request.
+              </span>
+            ) : null}
             <span className="text-[12.5px]">
               Requested by {r.requested_by} · {formatDate(r.created_at)} · last activity{' '}
               {formatRelative(r.last_event_at ?? r.updated_at)}
@@ -199,14 +206,10 @@ function RequestView({ r }: { r: RequestDetail }) {
                   />
                   <div className="text-[13px] text-ink">
                     <span className="font-medium">{e.actor_label}</span>{' '}
-                    {e.from_status ? (
-                      <span className="text-muted">
-                        moved it from {STATUS_LABELS[e.from_status]} to{' '}
-                      </span>
-                    ) : (
-                      <span className="text-muted">opened it as </span>
-                    )}
-                    <span className="font-medium">{STATUS_LABELS[e.to_status]}</span>
+                    <span className="text-muted">
+                      {eventSentence(e.from_status, e.to_status, contactFirst)}
+                    </span>{' '}
+                    <span className="text-faint">· {STATUS_LABELS[e.to_status]}</span>
                   </div>
                   {e.note ? (
                     <div className="text-[12.5px] text-ink-2 mt-0.5">“{e.note}”</div>
@@ -286,7 +289,6 @@ function Actions({
   const [outcome, setOutcome] = useState('');
   const [manualStatus, setManualStatus] = useState<Status | ''>(manual[0] ?? '');
   const [manualNote, setManualNote] = useState('');
-  const [reason, setReason] = useState<DeclineReason>('dont_know_well');
   const [attemptedClose, setAttemptedClose] = useState(false);
 
   const err = transition.error;
@@ -354,7 +356,7 @@ function Actions({
               transition.mutate({
                 to_status: chosenManual,
                 note: manualNote.trim() || null,
-                reason: chosenManual === 'employee_declined' ? reason : null,
+                reason: null,
               });
             }}
             className="space-y-2 rounded bg-ground border border-line p-3"
@@ -376,22 +378,6 @@ function Actions({
                 ))}
               </select>
             </label>
-            {chosenManual === 'employee_declined' ? (
-              <label className="block">
-                <span className="block text-[12.5px] font-medium text-ink-2 mb-1">Reason</span>
-                <select
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value as DeclineReason)}
-                  className="field w-full text-[13px]"
-                >
-                  {(Object.keys(DECLINE_REASON_LABELS) as DeclineReason[]).map((k) => (
-                    <option key={k} value={k}>
-                      {DECLINE_REASON_LABELS[k]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
             <label className="block">
               <span className="block text-[12.5px] font-medium text-ink-2 mb-1">
                 Note <span className="text-muted font-normal">(optional)</span>

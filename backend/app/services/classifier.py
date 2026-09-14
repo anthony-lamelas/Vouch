@@ -20,21 +20,9 @@ class Classification:
     classifier: str = "keyword"
 
 
-# Ordered: candidate outcomes are checked before the weaker 'contacted' and 'accepted' signals,
+# Ordered: candidate outcomes are checked before the weaker 'accepted' signals,
 # because "I messaged her and she's interested" should land on candidate_interested.
 _RULES: Final[tuple[tuple[Status, DeclineReason | None, tuple[str, ...]], ...]] = (
-    (
-        Status.NO_RESPONSE,
-        None,
-        (
-            r"no (reply|response|answer)",
-            r"hasn'?t (replied|responded|answered|gotten back)",
-            r"ghost",
-            r"radio silence",
-            r"never (heard|got) back",
-            r"crickets",
-        ),
-    ),
     (
         Status.CANDIDATE_DECLINED,
         None,
@@ -96,7 +84,7 @@ _RULES: Final[tuple[tuple[Status, DeclineReason | None, tuple[str, ...]], ...]] 
         ),
     ),
     (
-        Status.CONTACTED,
+        Status.EMPLOYEE_ACCEPTED,
         None,
         (
             r"(reached|reaching) out",
@@ -108,12 +96,6 @@ _RULES: Final[tuple[tuple[Status, DeclineReason | None, tuple[str, ...]], ...]] 
             r"emailed",
             r"texted",
             r"just (asked|wrote)",
-        ),
-    ),
-    (
-        Status.EMPLOYEE_ACCEPTED,
-        None,
-        (
             r"\bwill do\b",
             r"\bon it\b",
             r"\bsure\b",

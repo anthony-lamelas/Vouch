@@ -10,17 +10,17 @@ describe('StatusPill', () => {
       expect(screen.getByText(STATUS_LABELS[status])).toBeInTheDocument();
       unmount();
     }
-    expect(STATUS_LABELS.employee_accepted).toBe('Employee accepted');
-    expect(STATUS_LABELS.no_response).toBe('No response');
+    expect(STATUS_LABELS.employee_accepted).toBe('Employee reached out');
+    expect(STATUS_LABELS.employee_accepted).toBe('Employee reached out');
   });
 
   it('uses semantic tones', () => {
     render(<StatusPill status="candidate_declined" />);
-    expect(screen.getByText('Candidate declined')).toHaveAttribute('data-tone', 'negative');
-    render(<StatusPill status="no_response" />);
-    expect(screen.getByText('No response')).toHaveAttribute('data-tone', 'warning');
-    render(<StatusPill status="contacted" />);
-    expect(screen.getByText('Contacted')).toHaveAttribute('data-tone', 'positive');
+    expect(screen.getByText('Candidate passed')).toHaveAttribute('data-tone', 'negative');
+    render(<StatusPill status="employee_declined" />);
+    expect(screen.getByText('Employee passed')).toHaveAttribute('data-tone', 'negative');
+    render(<StatusPill status="candidate_interested" />);
+    expect(screen.getByText('Candidate interested')).toHaveAttribute('data-tone', 'positive');
     render(<StatusPill status="closed" />);
     expect(screen.getByText('Closed')).toHaveAttribute('data-tone', 'neutral');
   });

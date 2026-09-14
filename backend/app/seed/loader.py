@@ -158,9 +158,8 @@ _SCENARIOS: tuple[tuple[str, list[tuple[Status, int, str | None]]], ...] = (
     (
         "customer_engineering",
         [
-            (Status.REQUESTED, 6, None),
-            (Status.EMPLOYEE_ACCEPTED, 5, None),
-            (Status.CONTACTED, 4, "Sent a LinkedIn DM"),
+            (Status.REQUESTED, 11, None),
+            (Status.EMPLOYEE_ACCEPTED, 10, "Sent her a LinkedIn DM"),
         ],
     ),
     (
@@ -168,7 +167,6 @@ _SCENARIOS: tuple[tuple[str, list[tuple[Status, int, str | None]]], ...] = (
         [
             (Status.REQUESTED, 9, None),
             (Status.EMPLOYEE_ACCEPTED, 8, None),
-            (Status.CONTACTED, 7, None),
             (Status.CANDIDATE_INTERESTED, 3, "Interested, wants to chat next week"),
         ],
     ),
@@ -177,7 +175,6 @@ _SCENARIOS: tuple[tuple[str, list[tuple[Status, int, str | None]]], ...] = (
         [
             (Status.REQUESTED, 12, None),
             (Status.EMPLOYEE_ACCEPTED, 11, None),
-            (Status.CONTACTED, 10, None),
             (Status.CANDIDATE_DECLINED, 6, "Happy where she is; revisit in six months"),
         ],
     ),
@@ -186,7 +183,6 @@ _SCENARIOS: tuple[tuple[str, list[tuple[Status, int, str | None]]], ...] = (
         [
             (Status.REQUESTED, 20, None),
             (Status.EMPLOYEE_ACCEPTED, 19, None),
-            (Status.CONTACTED, 18, None),
             (Status.CANDIDATE_INTERESTED, 15, None),
             (Status.CLOSED, 10, "Intro made to hiring manager; in process"),
         ],
@@ -195,7 +191,7 @@ _SCENARIOS: tuple[tuple[str, list[tuple[Status, int, str | None]]], ...] = (
         "infrastructure",
         [
             (Status.REQUESTED, 5, None),
-            (Status.EMPLOYEE_DECLINED, 4, "Doesn't know them well"),
+            (Status.EMPLOYEE_DECLINED, 4, "Declined to refer"),
             (Status.REQUESTED, 4, None),
         ],
     ),
