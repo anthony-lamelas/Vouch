@@ -77,17 +77,10 @@ def build_request_blocks(
 ) -> list[dict[str, Any]]:
     blocks: list[dict[str, Any]] = [
         {
-            "type": "header",
-            "text": {"type": "plain_text", "text": f"Referral ask: {ctx.role_title}"},
-        },
-        {
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": (
-                    f"*{requested_by_name or request.requested_by}* · "
-                    f"*<{ctx.role_url}|{ctx.role_title}>*\n\n{drafts.ask}"
-                ),
+                "text": (f"*Referral Request: <{ctx.role_url}|{ctx.role_title}>*\n\n{drafts.ask}"),
             },
         },
     ]
@@ -99,10 +92,7 @@ def build_request_blocks(
                     {
                         "type": "mrkdwn",
                         "text": (
-                            f"_Demo routing: this would go to {employee.full_name} "
-                            f"({employee.email})"
-                            + (f"; sent to you because it {routing_note}" if routing_note else "")
-                            + "._"
+                            f"_Demo routing: this would go to {employee.full_name} in production._"
                         ),
                     }
                 ],
@@ -127,9 +117,28 @@ def status_blocks(
     *,
     contact_first: str = "them",
     employee_first: str = "",
+    suggested_message: str = "",
 ) -> list[dict[str, Any]]:
     """Return a copy of the message blocks reflecting the new status and next buttons."""
-    kept = [b for b in blocks if b.get("block_id") not in {"vouch_actions", "vouch_status"}]
+    kept = [
+        b
+        for b in blocks
+        if b.get("block_id") not in {"vouch_actions", "vouch_status", "vouch_suggested"}
+    ]
+    if status == Status.EMPLOYEE_ACCEPTED and suggested_message:
+        kept.append(
+            {
+                "type": "section",
+                "block_id": "vouch_suggested",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        f"*Suggested message to {contact_first}* (copy, tweak, send)\n"
+                        f"```{suggested_message}```"
+                    ),
+                },
+            }
+        )
     if status == Status.EMPLOYEE_ACCEPTED:
         thanks = f"Thanks{', ' + employee_first if employee_first else ''}!"
         kept.append(

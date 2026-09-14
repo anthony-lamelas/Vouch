@@ -478,12 +478,24 @@ class ReferralService:
         )
         if latest is None:
             return
+        suggested = ""
+        if status == Status.EMPLOYEE_ACCEPTED:
+            connection = connection_for(self.db, req.contact_id, req.employee_id)
+            ctx = build_context(
+                contact=req.contact,
+                role=req.role,
+                employee=req.employee,
+                connection=connection,
+                reasons=fit_reasons(self.db, req.contact_id, req.role_id),
+            )
+            suggested = self.generator.generate(ctx).casual
         blocks = status_blocks(
             list(latest.blocks),
             status,
             str(req.id),
             contact_first=req.contact.full_name.split(" ")[0],
             employee_first=req.employee.full_name.split(" ")[0],
+            suggested_message=suggested,
         )
         self.notifier.update(
             channel_id=str(latest.external_channel_id),
