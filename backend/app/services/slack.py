@@ -78,7 +78,7 @@ def build_request_blocks(
     blocks: list[dict[str, Any]] = [
         {
             "type": "header",
-            "text": {"type": "plain_text", "text": f"Referral ask: {ctx.role_title}"},
+            "text": {"type": "plain_text", "text": f"Referral Request: {ctx.role_title}"},
         },
         {
             "type": "section",
