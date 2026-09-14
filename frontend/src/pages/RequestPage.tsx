@@ -1,13 +1,13 @@
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
-import { useNudgeRequest, useRequest, useTransitionRequest } from '../api/queries';
+import { useContact, useNudgeRequest, useRequest, useTransitionRequest } from '../api/queries';
 import type { EventOut, RequestDetail, Status } from '../api/types';
 import { Button } from '../components/Button';
-import { Disclosure } from '../components/Disclosure';
 import { ErrorState, Skeleton } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
 import { Popover } from '../components/Popover';
+import { ProfileBlocks } from '../components/ProfileBlocks';
 import { StatusPill } from '../components/StatusPill';
 import { firstName, formatDate, formatDateTime, formatRelative } from '../lib/format';
 import { STATUS_LABELS, eventSentence } from '../lib/status';
@@ -71,7 +71,7 @@ function RequestView({ r }: { r: RequestDetail }) {
             contactFirst={contactFirst}
             employeeFirst={employeeFirst}
           />
-          <h2 className="mt-5 text-[13px] font-semibold text-ink">Timeline</h2>
+          <h2 className="mt-4 text-[13px] font-semibold text-ink">Timeline</h2>
           <ol className="mt-1">
             {events.map((e, i) => {
               const latest = i === events.length - 1;
@@ -106,9 +106,50 @@ function RequestView({ r }: { r: RequestDetail }) {
               );
             })}
           </ol>
+
+          <CandidateProfile r={r} />
         </section>
       </div>
     </div>
+  );
+}
+
+/** The candidate's full profile, fetched separately: the request only carries a brief. */
+function CandidateProfile({ r }: { r: RequestDetail }) {
+  const contact = useContact(r.contact.id);
+  return (
+    <section aria-labelledby="candidate-title" className="mt-4">
+      <div className="mb-2 flex items-baseline justify-between gap-4">
+        <h2 id="candidate-title" className="text-[13px] font-semibold text-ink">
+          Candidate
+        </h2>
+        <Link
+          to={`/roles/${r.role.id}?contact=${r.contact.id}`}
+          className="link text-[12px] tracking-normal"
+        >
+          Open profile
+        </Link>
+      </div>
+      {contact.isError ? (
+        <ErrorState title="Couldn't load the candidate's profile" error={contact.error} />
+      ) : null}
+      {contact.isPending ? (
+        <div className="space-y-2" aria-busy="true" aria-label="Loading profile">
+          <Skeleton className="h-3.5 w-[60%]" />
+          <Skeleton className="h-3.5 w-[45%]" />
+          <Skeleton className="h-3.5 w-[52%]" />
+        </div>
+      ) : null}
+      {contact.data ? (
+        <div className="space-y-4">
+          <ProfileBlocks
+            experiences={contact.data.experiences}
+            education={contact.data.education}
+            skills={contact.data.skills}
+          />
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -178,22 +219,30 @@ function Attributes({ r }: { r: RequestDetail }) {
           </span>
         </Row>
       </dl>
-      <Disclosure summary="Why this candidate" className="mt-3 border-t border-line pt-3">
+      <section aria-labelledby="why-title" className="mt-4 border-t border-line pt-4">
+        <h2 id="why-title" className="text-[13px] font-semibold text-ink">
+          Why this candidate
+        </h2>
         {r.reasons.length === 0 ? (
-          <p className="text-[13px] text-muted">No stored match signals for this pair.</p>
+          <p className="mt-1 text-[13px] text-muted">No stored match signals for this pair.</p>
         ) : (
-          <dl className="divide-y divide-line text-[13px]">
+          <dl className="mt-1 divide-y divide-line">
             {r.reasons.map((reason, i) => (
-              <div key={i} className="py-1.5">
-                <dt className="font-medium text-ink">{reason.label}</dt>
-                {reason.detail ? (
-                  <dd className="text-[12px] tracking-normal text-muted">{reason.detail}</dd>
-                ) : null}
+              <div
+                key={i}
+                className="grid grid-cols-[104px_minmax(0,1fr)] items-start gap-x-3 py-[7px]"
+              >
+                <dt className="text-[12px] leading-[18px] tracking-normal text-muted">
+                  {reason.label}
+                </dt>
+                <dd className="min-w-0 text-[13px] leading-[18px] font-medium text-ink">
+                  {reason.detail ?? '—'}
+                </dd>
               </div>
             ))}
           </dl>
         )}
-      </Disclosure>
+      </section>
     </aside>
   );
 }

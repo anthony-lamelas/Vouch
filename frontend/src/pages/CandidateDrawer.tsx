@@ -5,13 +5,12 @@ import { ApiError } from '../api/client';
 import { keys, useAskPreview, useContact, useCreateRequest } from '../api/queries';
 import type { ConnectionOut, ContactDetail, Reason, RequestDetail } from '../api/types';
 import { Button } from '../components/Button';
-import { Chip } from '../components/Chip';
 import { ErrorState, Skeleton } from '../components/EmptyState';
 import { XIcon } from '../components/Icons';
 import { SectionTitle } from '../components/PageHeader';
 import { StatusPill } from '../components/StatusPill';
-import { firstName, formatRelative, formatSpan } from '../lib/format';
-import { sortEducation, sortExperiences } from '../lib/history';
+import { ProfileBlocks } from '../components/ProfileBlocks';
+import { firstName, formatRelative } from '../lib/format';
 
 export function CandidateDrawer({
   contactId,
@@ -121,57 +120,11 @@ export function CandidateDrawer({
 
             <WhyList reasons={why} />
 
-            <section>
-              <SectionTitle>Experience</SectionTitle>
-              <ol className="ml-[3px] space-y-2 border-l border-line pl-3.5 text-[13px]">
-                {sortExperiences(data.experiences).map((e, i) => (
-                  <li key={i} className="relative">
-                    <span
-                      aria-hidden
-                      className={`absolute -left-[17.5px] top-[6px] size-[7px] rounded-full ring-2 ring-canvas ${
-                        e.end ? 'bg-line' : 'bg-cobalt'
-                      }`}
-                    />
-                    <div className="leading-5 text-ink">
-                      <span className="font-medium">{e.title ?? '—'}</span>
-                      <span className="text-carbon"> at {e.company ?? '—'}</span>
-                    </div>
-                    <div className="text-[12px] tracking-normal text-muted tnum">
-                      {e.team ? `${e.team}, ` : ''}
-                      {formatSpan(e.start, e.end)}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </section>
-
-            {data.education.length > 0 ? (
-              <section>
-                <SectionTitle>Education</SectionTitle>
-                <ul className="space-y-1 text-[13px]">
-                  {sortEducation(data.education).map((ed, i) => (
-                    <li key={i}>
-                      <div className="text-ink">{ed.school ?? '—'}</div>
-                      <div className="text-[12px] tracking-normal text-muted tnum">
-                        {[ed.degree, ed.field].filter(Boolean).join(', ')}
-                        {ed.start_year || ed.end_year
-                          ? `, ${String(ed.start_year ?? '?')}–${String(ed.end_year ?? '?')}`
-                          : ''}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-
-            <section>
-              <SectionTitle>Skills</SectionTitle>
-              <div className="flex flex-wrap gap-1">
-                {data.skills.map((s) => (
-                  <Chip key={s}>{s}</Chip>
-                ))}
-              </div>
-            </section>
+            <ProfileBlocks
+              experiences={data.experiences}
+              education={data.education}
+              skills={data.skills}
+            />
 
             {!pickerVisible && connections.length > 0 ? (
               <section>
