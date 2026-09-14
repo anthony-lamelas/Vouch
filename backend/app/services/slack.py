@@ -21,10 +21,10 @@ BUTTONS: dict[str, tuple[Status, DeclineReason | None, str | None]] = {
     "vouch_candidate_declined": (Status.CANDIDATE_DECLINED, None, None),
 }
 BUTTON_TEXT: dict[str, str] = {
-    "vouch_accept": "Yes, I'll refer them",
+    "vouch_accept": "Yes, I'll reach out",
     "vouch_decline": "No, not this one",
-    "vouch_interested": "They're interested",
-    "vouch_candidate_declined": "They passed",
+    "vouch_interested": "{name}'s interested",
+    "vouch_candidate_declined": "{name} passed",
 }
 _STATUS_TO_BUTTONS: dict[Status, list[str]] = {
     Status.EMPLOYEE_ACCEPTED: ["vouch_accept"],
@@ -43,16 +43,19 @@ class SendResult:
     error: str | None = None
 
 
-def action_buttons(status: Status, request_id: str) -> list[dict[str, Any]]:
+def action_buttons(
+    status: Status, request_id: str, contact_first: str = "They"
+) -> list[dict[str, Any]]:
     elements: list[dict[str, Any]] = []
     order = list(_STATUS_TO_BUTTONS)
     for target in sorted(next_employee_actions(status), key=order.index):
         for action_id in _STATUS_TO_BUTTONS.get(target, []):
             _, _, style = BUTTONS[action_id]
+            label = BUTTON_TEXT[action_id].format(name=contact_first)
             button: dict[str, Any] = {
                 "type": "button",
                 "action_id": action_id,
-                "text": {"type": "plain_text", "text": BUTTON_TEXT[action_id]},
+                "text": {"type": "plain_text", "text": label},
                 "value": request_id,
             }
             if style:
@@ -109,18 +112,40 @@ def build_request_blocks(
         {
             "type": "actions",
             "block_id": "vouch_actions",
-            "elements": action_buttons(Status(request.status), str(request.id)),
+            "elements": action_buttons(
+                Status(request.status), str(request.id), ctx.contact_first_name
+            ),
         }
     )
     return blocks
 
 
 def status_blocks(
-    blocks: list[dict[str, Any]], status: Status, request_id: str
+    blocks: list[dict[str, Any]],
+    status: Status,
+    request_id: str,
+    *,
+    contact_first: str = "them",
+    employee_first: str = "",
 ) -> list[dict[str, Any]]:
     """Return a copy of the message blocks reflecting the new status and next buttons."""
     kept = [b for b in blocks if b.get("block_id") not in {"vouch_actions", "vouch_status"}]
-    buttons = action_buttons(status, request_id)
+    if status == Status.EMPLOYEE_ACCEPTED:
+        thanks = f"Thanks{', ' + employee_first if employee_first else ''}!"
+        kept.append(
+            {
+                "type": "section",
+                "block_id": "vouch_status",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        f"{thanks} Once you've reached out to {contact_first}, "
+                        f"tap what {contact_first} said, or just reply here."
+                    ),
+                },
+            }
+        )
+    buttons = action_buttons(status, request_id, contact_first)
     if buttons:
         kept.append({"type": "actions", "block_id": "vouch_actions", "elements": buttons})
     return kept

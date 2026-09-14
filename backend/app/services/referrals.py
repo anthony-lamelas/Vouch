@@ -310,7 +310,7 @@ class ReferralService:
             {
                 "type": "actions",
                 "block_id": "vouch_actions",
-                "elements": action_buttons(current, str(req.id)),
+                "elements": action_buttons(current, str(req.id), contact_first),
             },
         ]
         recipient, _ = resolve_recipient(
@@ -478,7 +478,13 @@ class ReferralService:
         )
         if latest is None:
             return
-        blocks = status_blocks(list(latest.blocks), status, str(req.id))
+        blocks = status_blocks(
+            list(latest.blocks),
+            status,
+            str(req.id),
+            contact_first=req.contact.full_name.split(" ")[0],
+            employee_first=req.employee.full_name.split(" ")[0],
+        )
         self.notifier.update(
             channel_id=str(latest.external_channel_id),
             ts=str(latest.external_ts),

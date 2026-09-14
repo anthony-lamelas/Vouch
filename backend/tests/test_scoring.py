@@ -114,7 +114,7 @@ def test_ask_draft_is_concise_and_signed() -> None:
         recruiter_first_name="Anthony",
     )
     text = draft_ask(ctx)
-    assert text.startswith("Hi Frank, would you be willing to refer Kelly Brooks")
+    assert text.startswith("Hi Frank, would you be willing to reach out to Kelly Brooks")
     assert "AI Support Engineer" in text and "overlapped at DoorDash" in text
     assert text.endswith("Thanks,\nAnthony")
-    assert len(text) < 320
+    assert len(text) < 360
