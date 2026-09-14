@@ -95,7 +95,8 @@ def test_casual_draft_reads_naturally() -> None:
     )
     text = draft_casual(ctx)
     assert text.startswith("Hey Priya! I hope you are doing well. We're hiring a Software Engineer")
-    assert text.endswith("we can get the interview process going!")
+    assert "we can get the interview process going!" in text
+    assert text.endswith("Here's the role: https://x")
 
 
 def test_article_before_a_job_title() -> None:

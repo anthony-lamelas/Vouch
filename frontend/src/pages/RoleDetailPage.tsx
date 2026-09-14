@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { useCandidates, useFilterOptions, useRequests, useRole } from '../api/queries';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { useCandidates, useFilterOptions, useRole } from '../api/queries';
 import type { CandidateOut, TieredName } from '../api/types';
 import { Button } from '../components/Button';
 import { RemovableChip } from '../components/Chip';
@@ -10,7 +10,6 @@ import { ExternalIcon } from '../components/Icons';
 import { MultiSelect, type Option } from '../components/MultiSelect';
 import { PageHeader } from '../components/PageHeader';
 import { Pagination } from '../components/Pagination';
-import { StatusPill } from '../components/StatusPill';
 import {
   TIERS,
   activeFilterCount,
@@ -55,7 +54,6 @@ export function RoleDetailPage() {
   const role = useRole(id);
   const options = useFilterOptions();
   const candidates = useCandidates(id, filters);
-  const roleRequests = useRequests({ role_id: id });
 
   const write = useCallback(
     (next: ReturnType<typeof parseFilters>, contact: string | null) => {
@@ -87,7 +85,6 @@ export function RoleDetailPage() {
   const items = page?.items ?? [];
   const nFilters = activeFilterCount(filters);
   const chips = appliedFilterChips(filters);
-  const requestItems = roleRequests.data?.items ?? [];
   const companyOptions = useMemo(() => toOptions(options.data?.companies), [options.data]);
   const schoolOptions = useMemo(
     () => toOptions(options.data?.schools, PINNED_SCHOOLS),
@@ -127,33 +124,6 @@ export function RoleDetailPage() {
             {familyLabel(role.data.job_family)}
           </p>
         </>
-      ) : null}
-
-      {requestItems.length > 0 ? (
-        <section
-          aria-label="Requests for this role"
-          className="mt-4 flex min-h-9 flex-wrap items-center gap-x-5 gap-y-1 rounded-[8px] bg-ice px-3 py-1 text-[13px]"
-        >
-          <span className="font-semibold text-reach-text">
-            Requests <span className="font-medium tnum">{requestItems.length}</span>
-          </span>
-          <ul className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-1">
-            {requestItems.slice(0, 5).map((r) => (
-              <li key={r.id} className="flex items-center gap-2">
-                <Link to={`/requests/${r.id}`} className="font-medium text-ink hover:underline">
-                  {r.contact.full_name}
-                </Link>
-                <StatusPill status={r.status} />
-              </li>
-            ))}
-            {requestItems.length > 5 ? (
-              <li className="text-muted">+{requestItems.length - 5} more</li>
-            ) : null}
-          </ul>
-          <Link to={`/pipeline?role_id=${id}&scope=all`} className="link ml-auto">
-            Open in pipeline
-          </Link>
-        </section>
       ) : null}
 
       <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Candidate filters">
