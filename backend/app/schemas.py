@@ -197,6 +197,22 @@ class CreateRequestIn(BaseModel):
     contact_id: uuid.UUID
     role_id: uuid.UUID
     employee_id: uuid.UUID | None = None
+    # Recruiter-edited version of the suggested message; falls back to the generated draft.
+    message: str | None = Field(default=None, max_length=2000)
+
+
+class AskPreviewIn(BaseModel):
+    contact_id: uuid.UUID
+    role_id: uuid.UUID
+    employee_id: uuid.UUID | None = None
+
+
+class AskPreviewOut(BaseModel):
+    employee: EmployeeBrief
+    connection: ConnectionOut
+    casual: str
+    formal: str
+    reasons: list[dict[str, Any]]
 
 
 class TransitionIn(BaseModel):

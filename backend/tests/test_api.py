@@ -403,3 +403,26 @@ def test_missing_asset_is_a_real_404_not_the_spa_shell(client: TestClient) -> No
     assert r.headers["content-type"].startswith("application/json")
     r = client.get("/favicon-missing.svg")
     assert r.status_code == 404
+
+
+def test_ask_preview_and_edited_message(client: TestClient) -> None:
+    role = _first_role(client, "marketing")
+    page = client.get(f"/api/roles/{role['id']}/candidates", params={"limit": 40}).json()
+    cand = next(c for c in page["items"] if c["active_request"] is None)
+    preview = client.post(
+        "/api/requests/preview", json={"contact_id": cand["contact"]["id"], "role_id": role["id"]}
+    )
+    assert preview.status_code == 200, preview.text
+    body = preview.json()
+    assert body["employee"]["id"] == cand["top_connection"]["employee"]["id"]
+    assert cand["contact"]["full_name"].split(" ")[0] in body["casual"]
+    created = client.post(
+        "/api/requests",
+        json={
+            "contact_id": cand["contact"]["id"],
+            "role_id": role["id"],
+            "message": "Hey, quick one: would you be up for a chat about a marketing role here?",
+        },
+    ).json()
+    assert created["outreach_casual"].startswith("Hey, quick one")
+    assert created["messages"][0]["body"].startswith("Hey, quick one")

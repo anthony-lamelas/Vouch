@@ -145,6 +145,32 @@ class ReferralService:
 
     # ---- create ------------------------------------------------------------------------------
 
+    def preview(
+        self, *, contact_id: uuid.UUID, role_id: uuid.UUID, employee_id: uuid.UUID | None
+    ) -> tuple[Connection, OutreachContext, Drafts]:
+        """What an ask would send, without sending it."""
+        contact = self.db.get(Contact, contact_id)
+        role = self.db.get(Role, role_id)
+        if contact is None or role is None:
+            raise NotFoundError("contact or role")
+        connection = (
+            connection_for(self.db, contact_id, employee_id)
+            if employee_id
+            else strongest_connection(self.db, contact_id)
+        )
+        if connection is None:
+            raise NoConnectionError("No employee is connected to this contact")
+        employee = connection.employee or self.db.get(Employee, connection.employee_id)
+        assert employee is not None
+        ctx = build_context(
+            contact=contact,
+            role=role,
+            employee=employee,
+            connection=connection,
+            reasons=fit_reasons(self.db, contact_id, role_id),
+        )
+        return connection, ctx, self.generator.generate(ctx)
+
     def create(
         self,
         *,
@@ -152,6 +178,7 @@ class ReferralService:
         role_id: uuid.UUID,
         employee_id: uuid.UUID | None,
         requested_by: str,
+        message: str | None = None,
     ) -> ReferralRequest:
         contact = self.db.get(Contact, contact_id)
         role = self.db.get(Role, role_id)
@@ -188,6 +215,8 @@ class ReferralService:
             reasons=fit_reasons(self.db, contact_id, role_id),
         )
         drafts = self.generator.generate(ctx)
+        if message and message.strip():
+            drafts = Drafts(casual=message.strip(), formal=drafts.formal, generator="recruiter")
         req = ReferralRequest(
             contact_id=contact_id,
             role_id=role_id,
