@@ -82,6 +82,24 @@ describe('PipelinePage', () => {
     expect(within(closed).getByText('Kim Morrow')).toBeInTheDocument();
     expect(screen.queryByRole('rowgroup', { name: /Waiting on employee/ })).toBeNull();
 
+    // The stage strip counts every stage, including the empty ones, and never filters.
+    const strip = screen.getByLabelText('Stages');
+    expect(
+      within(strip)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual([
+      'Needs you2',
+      'Waiting on employee0',
+      'Employee reached out0',
+      'Answered0',
+      'Closed1',
+    ]);
+    within(strip)
+      .getByRole('button', { name: /Closed/ })
+      .click();
+    expect(screen.getByRole('rowgroup', { name: /Needs you/ })).toBeInTheDocument();
+
     const requestUrl = fetchMock.mock.calls
       .map((c) => urlOf(c[0]))
       .find((u) => u.includes('/api/requests'));

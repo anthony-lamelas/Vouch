@@ -11,6 +11,17 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
+    <script>
+      // Apply a stored theme before first paint so there is no light flash. Mirrors lib/theme.ts.
+      try {
+        var vouchTheme = localStorage.getItem('vouch.theme');
+        if (vouchTheme === 'dark' || vouchTheme === 'light') {
+          document.documentElement.setAttribute('data-theme', vouchTheme);
+        }
+      } catch (e) {
+        /* storage unavailable: follow the OS preference */
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

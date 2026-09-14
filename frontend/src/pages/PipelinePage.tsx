@@ -4,12 +4,19 @@ import { useRequests } from '../api/queries';
 import type { RequestSummary, Status } from '../api/types';
 import { RemovableChip } from '../components/Chip';
 import { EmptyState, ErrorState, TableSkeleton } from '../components/EmptyState';
-import { GroupBand, type BandTone } from '../components/GroupBand';
+import { GroupBand } from '../components/GroupBand';
 import { PageHeader } from '../components/PageHeader';
 import { StatusPill } from '../components/StatusPill';
 import { Tabs } from '../components/Tabs';
+import { BAND, type BandTone } from '../lib/bands';
 import { formatRelative } from '../lib/format';
-import { groupRequests, type GroupKey } from '../lib/pipelineGroups';
+import {
+  GROUP_ORDER,
+  GROUP_TITLES,
+  groupKeyFor,
+  groupRequests,
+  type GroupKey,
+} from '../lib/pipelineGroups';
 import { STATUS_LABELS, isStatus } from '../lib/status';
 
 const GROUP_TONE: Record<GroupKey, BandTone> = {
@@ -19,6 +26,47 @@ const GROUP_TONE: Record<GroupKey, BandTone> = {
   answered: 'no',
   closed: 'closed',
 };
+
+const bandId = (key: GroupKey) => `stage-${key}`;
+
+/** One soft tag per stage with its count; clicking scrolls to the band, it never filters. */
+function StageStrip({ items }: { items: RequestSummary[] }) {
+  const counts = useMemo(() => {
+    const c = new Map<GroupKey, number>();
+    for (const r of items) c.set(groupKeyFor(r), (c.get(groupKeyFor(r)) ?? 0) + 1);
+    return c;
+  }, [items]);
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-1.5" aria-label="Stages">
+      {GROUP_ORDER.map((key) => {
+        const n = counts.get(key) ?? 0;
+        const cls = BAND[GROUP_TONE[key]];
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => {
+              const el = document.getElementById(bandId(key));
+              if (el && typeof el.scrollIntoView === 'function') {
+                el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+              }
+            }}
+            className={`inline-flex h-[22px] items-center gap-1.5 rounded-tag px-2 text-[12px] font-medium tracking-normal transition-opacity hover:opacity-80 ${
+              n > 0 ? cls.row : 'bg-haze text-caption'
+            }`}
+          >
+            <span
+              aria-hidden
+              className={`size-1.5 rounded-full ${n > 0 ? cls.dot : 'bg-caption'}`}
+            />
+            {GROUP_TITLES[key]}
+            <span className="tnum">{n}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function PipelinePage() {
   const [params, setParams] = useSearchParams();
@@ -35,9 +83,10 @@ export function PipelinePage() {
     mine: scope === 'mine' || undefined,
   });
 
+  const items = requests.data?.items;
   const groups = useMemo(
-    () => groupRequests(requests.data?.items ?? [], { hideClosed: activeOnly }),
-    [requests.data, activeOnly],
+    () => groupRequests(items ?? [], { hideClosed: activeOnly }),
+    [items, activeOnly],
   );
   const shown = groups.reduce((n, g) => n + g.items.length, 0);
 
@@ -87,6 +136,8 @@ export function PipelinePage() {
         </label>
       </PageHeader>
 
+      {items ? <StageStrip items={items} /> : null}
+
       {filtered ? (
         <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[12px] text-muted">
           <span>Filtered</span>
@@ -103,7 +154,7 @@ export function PipelinePage() {
         </div>
       ) : null}
 
-      <div className="mt-4">
+      <div className="mt-3">
         {requests.isPending ? <TableSkeleton rows={6} cols={5} /> : null}
         {requests.isError ? (
           <ErrorState title="Couldn't load requests" error={requests.error} />
@@ -134,7 +185,7 @@ export function PipelinePage() {
         ) : null}
 
         {shown > 0 ? (
-          <table className="data-table">
+          <table className="data-table data-table-calm">
             <thead>
               <tr>
                 <th className="w-[30%]">Candidate</th>
@@ -147,6 +198,8 @@ export function PipelinePage() {
             {groups.map((g) => (
               <tbody key={g.key} aria-label={g.title}>
                 <GroupBand
+                  id={bandId(g.key)}
+                  size="sm"
                   title={g.title}
                   count={g.items.length}
                   colSpan={5}
