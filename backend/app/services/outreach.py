@@ -20,6 +20,9 @@ class OutreachContext:
     role_url: str
     employee_first_name: str
     shared_history: str | None = None
+    # Where the employee and the contact actually overlapped, if anywhere: one or the other.
+    shared_company: str | None = None
+    shared_school: str | None = None
     fit_reasons: list[str] = field(default_factory=list)
     recruiter_first_name: str = ""
 
@@ -48,30 +51,33 @@ def _because(ctx: OutreachContext) -> str:
     return f" ({ctx.fit_reasons[0].lower()})"
 
 
-_HISTORY_REWRITES = (
-    ("Overlapped at", "we overlapped at"),
-    ("Worked together at", "we worked together at"),
-    ("Both worked at", "we both worked at"),
-    ("Both attended", "we both went to"),
-)
+def article(noun: str) -> str:
+    """'a' or 'an' for a job title: 'an AI Support Engineer', 'an SRE', 'a Software Engineer'."""
+    word = noun.strip().split(" ")[0] if noun.strip() else ""
+    if not word:
+        return "a"
+    lower = word.lower()
+    if word.isupper() and len(word) <= 4:
+        # Acronyms are read letter by letter; these letters start with a vowel sound.
+        return "an" if word[0] in "AEFHILMNORSX" else "a"
+    if lower.startswith(("uni", "use", "usa", "eu", "one", "ux", "ui")):
+        return "a"
+    if lower.startswith(("hour", "honest", "heir", "honor")):
+        return "an"
+    return "an" if lower[0] in "aeiou" else "a"
 
 
-def _casual_history(history: str) -> str:
-    """'Worked together at Stripe (2019-2024) on Payments' -> 'we worked together at Stripe ...'."""
-    for prefix, replacement in _HISTORY_REWRITES:
-        if history.startswith(prefix):
-            return replacement + history[len(prefix) :]
-    return history[:1].lower() + history[1:]
+def _shared_sentence(ctx: OutreachContext) -> str:
+    if ctx.shared_company:
+        return f" You both worked at {ctx.shared_company}."
+    if ctx.shared_school:
+        return f" You both went to {ctx.shared_school}."
+    return ""
 
 
 def draft_ask(ctx: OutreachContext) -> str:
     """Concise note from the recruiter to the employee asking for the referral."""
-    history = (
-        f" You two {ctx.shared_history[:1].lower()}{ctx.shared_history[1:]}, "
-        "so you seemed like the right person to ask."
-        if ctx.shared_history
-        else ""
-    )
+    history = _shared_sentence(ctx)
     signoff = f"\n\nThanks,\n{ctx.recruiter_first_name}" if ctx.recruiter_first_name else ""
     return (
         f"Hi {ctx.employee_first_name}, would you be willing to reach out to "
@@ -82,17 +88,12 @@ def draft_ask(ctx: OutreachContext) -> str:
 
 
 def draft_casual(ctx: OutreachContext) -> str:
-    history = _casual_history(ctx.shared_history) if ctx.shared_history else ""
-    opener = (
-        f"Hey {ctx.contact_first_name}! Feels like ages since {history}."
-        if history
-        else f"Hey {ctx.contact_first_name}! Hope things are good at {ctx.contact_company}."
-    )
+    """The suggested DM from the employee to the candidate."""
     return (
-        f"{opener} Quick one: we're hiring a {ctx.role_title} on the {ctx.role_team} team here "
-        f"at Cognition and you were honestly the first person I thought of{_because(ctx)}. "
-        f"Zero pressure, but if you're even a little curious I'd love to tell you what we're "
-        f"building. 15 min call sometime next week?"
+        f"Hey {ctx.contact_first_name}! I hope you are doing well. We're hiring "
+        f"{article(ctx.role_title)} {ctx.role_title} here at Cognition, and you seem like a "
+        f"great fit. Zero pressure, but if you're interested, please let me know, and we can "
+        f"get the interview process going!"
     )
 
 
@@ -103,8 +104,8 @@ def draft_formal(ctx: OutreachContext) -> str:
     return (
         f"Subject: {ctx.role_title} at Cognition\n\n"
         f"Hi {ctx.contact_first_name},\n\n"
-        f"I hope you're doing well. {shared}I'm reaching out because Cognition is hiring a "
-        f"{ctx.role_title} ({ctx.role_location}), and given your work as "
+        f"I hope you're doing well. {shared}I'm reaching out because Cognition is hiring "
+        f"{article(ctx.role_title)} {ctx.role_title} ({ctx.role_location}), and given your work as "
         f"{ctx.contact_title} at {ctx.contact_company}, I think you'd be a strong "
         f"fit{_because(ctx)}.\n\n"
         f"I'd be glad to share more about the team and the role, or introduce you to the hiring "

@@ -111,6 +111,24 @@ def shared_history(connection: Connection | None) -> str | None:
     return str(detail) if detail else None
 
 
+def _shared_place(detail: object) -> str | None:
+    """'Overlapped at Stripe (2019-2024) on Payments' -> 'Stripe'."""
+    if not detail:
+        return None
+    text = str(detail).removeprefix("Overlapped at ")
+    for stop in (" (", ", different years", " on "):
+        text = text.split(stop, 1)[0]
+    return text.strip() or None
+
+
+def shared_places(connection: Connection | None) -> tuple[str | None, str | None]:
+    """(company, school) the employee and contact have in common, from the strength breakdown."""
+    if connection is None:
+        return None, None
+    b = connection.strength_breakdown
+    return _shared_place(b.get("overlap_detail")), _shared_place(b.get("school_detail"))
+
+
 def fit_reasons(db: Session, contact_id: uuid.UUID, role_id: uuid.UUID) -> list[str]:
     ms = db.get(MatchScore, {"role_id": role_id, "contact_id": contact_id})
     if ms is None:
@@ -142,6 +160,8 @@ def build_context(
         role_url=role.job_url,
         employee_first_name=employee.full_name.split(" ")[0],
         shared_history=shared_history(connection),
+        shared_company=shared_places(connection)[0],
+        shared_school=shared_places(connection)[1],
         fit_reasons=reasons,
         recruiter_first_name=recruiter_name.split(" ")[0] if recruiter_name else "",
     )

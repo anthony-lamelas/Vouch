@@ -94,8 +94,23 @@ def test_casual_draft_reads_naturally() -> None:
         fit_reasons=["4 of 8 required skills"],
     )
     text = draft_casual(ctx)
-    assert text.startswith("Hey Priya! Feels like ages since we overlapped at Stripe (2019-2024)")
-    assert "Software Engineer, Infrastructure" in text
+    assert text.startswith("Hey Priya! I hope you are doing well. We're hiring a Software Engineer")
+    assert text.endswith("we can get the interview process going!")
+
+
+def test_article_before_a_job_title() -> None:
+    from app.services.outreach import article
+
+    assert article("AI Support Engineer") == "an"
+    assert article("Applied AI Engineer") == "an"
+    assert article("Engineering Manager") == "an"
+    assert article("Software Engineer") == "a"
+    assert article("SRE") == "an"
+    assert article("ML Engineer") == "an"
+    assert article("FDE") == "an"
+    assert article("UX Researcher") == "a"
+    assert article("University Recruiter") == "a"
+    assert article("Head of Sales") == "a"
 
 
 def test_ask_draft_is_concise_and_signed() -> None:
@@ -111,13 +126,37 @@ def test_ask_draft_is_concise_and_signed() -> None:
         role_url="https://x",
         employee_first_name="Frank",
         shared_history="Overlapped at DoorDash (2020-2022)",
+        shared_company="DoorDash",
         recruiter_first_name="Anthony",
     )
     text = draft_ask(ctx)
     assert text.startswith("Hi Frank, would you be willing to reach out to Kelly Brooks")
-    assert "AI Support Engineer" in text and "overlapped at DoorDash" in text
+    assert "AI Support Engineer" in text and " You both worked at DoorDash. " in text
     assert text.endswith("Thanks,\nAnthony")
     assert len(text) < 360
+
+    from dataclasses import replace
+
+    school = draft_ask(replace(ctx, shared_company=None, shared_school="NYU"))
+    assert " You both went to NYU. " in school
+    plain = draft_ask(replace(ctx, shared_history=None, shared_company=None))
+    assert "You both" not in plain and "right person" not in plain
+    assert "role? If you're up for it" in plain
+
+
+def test_shared_places_come_from_the_breakdown() -> None:
+    from types import SimpleNamespace
+
+    from app.services.referrals import shared_places
+
+    conn = SimpleNamespace(
+        strength_breakdown={
+            "overlap_detail": "Overlapped at Stripe (2019-2024) on Payments",
+            "school_detail": "Overlapped at NYU, different years",
+        }
+    )
+    assert shared_places(conn) == ("Stripe", "NYU")  # type: ignore[arg-type]
+    assert shared_places(None) == (None, None)
 
 
 def test_location_match_same_city_region_and_elsewhere() -> None:
