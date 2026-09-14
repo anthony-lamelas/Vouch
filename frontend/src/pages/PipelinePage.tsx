@@ -5,11 +5,20 @@ import type { RequestSummary, Status } from '../api/types';
 import { Button } from '../components/Button';
 import { RemovableChip } from '../components/Chip';
 import { EmptyState, ErrorState, TableSkeleton } from '../components/EmptyState';
+import { ChevronIcon } from '../components/Icons';
 import { MultiSelect, type Option } from '../components/MultiSelect';
 import { PageHeader } from '../components/PageHeader';
 import { StatusPill } from '../components/StatusPill';
 import { Tabs } from '../components/Tabs';
 import { formatCount, formatRelative } from '../lib/format';
+import {
+  nextSort,
+  parseSort,
+  sortRequests,
+  writeSort,
+  type SortColumn,
+  type SortState,
+} from '../lib/pipelineSort';
 import { STATUS_LABELS, STATUS_ORDER, isStatus } from '../lib/status';
 
 /** The six statuses in lifecycle order. */
@@ -18,8 +27,52 @@ const STATUS_OPTIONS: Option[] = STATUS_ORDER.map((s) => ({
   label: STATUS_LABELS[s],
 }));
 
-function activityAt(r: RequestSummary): number {
-  return new Date(r.last_event_at ?? r.updated_at).getTime();
+const COLUMNS: readonly { key: SortColumn; label: string; className?: string }[] = [
+  { key: 'candidate', label: 'Candidate', className: 'w-[30%]' },
+  { key: 'employee', label: 'Employee asked' },
+  { key: 'status', label: 'Status' },
+  { key: 'requested_by', label: 'Requested by' },
+  { key: 'activity', label: 'Last activity', className: 'num' },
+];
+
+/** A header cell that sorts its column; the active one shows a chevron and `aria-sort`. */
+function SortHeader({
+  column,
+  label,
+  className = '',
+  sort,
+  onSort,
+}: {
+  column: SortColumn;
+  label: string;
+  className?: string;
+  sort: SortState;
+  onSort: (column: SortColumn) => void;
+}) {
+  const active = sort.column === column;
+  return (
+    <th
+      className={className}
+      aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className={`inline-flex h-full items-center gap-1 rounded-[4px] ${
+          active ? 'text-ink' : 'hover:text-ink'
+        }`}
+      >
+        {label}
+        {active ? (
+          <ChevronIcon
+            size={12}
+            className={sort.dir === 'asc' ? '-rotate-90' : 'rotate-90'}
+            data-testid="sort-chevron"
+          />
+        ) : null}
+      </button>
+    </th>
+  );
 }
 
 export function PipelinePage() {
@@ -29,6 +82,7 @@ export function PipelinePage() {
   const activeOnly = params.get('active_only') === '1';
   const roleId = params.get('role_id') ?? undefined;
   const scope: 'mine' | 'all' = params.get('scope') === 'all' ? 'all' : 'mine';
+  const sort = useMemo(() => parseSort(params), [params]);
   const [q, setQ] = useState('');
 
   const requests = useRequests({
@@ -38,7 +92,7 @@ export function PipelinePage() {
     mine: scope === 'mine' || undefined,
   });
 
-  // One flat list, newest activity first; the search narrows it client-side.
+  // One flat list; the search narrows it client-side and the chosen column orders it.
   const rows = useMemo(() => {
     const items = requests.data?.items ?? [];
     const needle = q.trim().toLowerCase();
@@ -49,14 +103,15 @@ export function PipelinePage() {
           ),
         )
       : items;
-    return [...list].sort((a, b) => activityAt(b) - activityAt(a));
-  }, [requests.data, q]);
+    return sortRequests(list, sort);
+  }, [requests.data, q, sort]);
 
   const apply = (next: {
     statuses?: Status[];
     hideClosed?: boolean;
     scope?: 'mine' | 'all';
     roleId?: string | undefined;
+    sort?: SortState;
   }) => {
     const p = new URLSearchParams();
     for (const x of next.statuses ?? selected) p.append('status', x);
@@ -64,8 +119,10 @@ export function PipelinePage() {
     const rid = 'roleId' in next ? next.roleId : roleId;
     if (rid) p.set('role_id', rid);
     p.set('scope', next.scope ?? scope);
-    setParams(p, { replace: true });
+    // Sorting survives every other change, including "Clear all".
+    setParams(writeSort(p, next.sort ?? sort), { replace: true });
   };
+  const onSort = (column: SortColumn) => apply({ sort: nextSort(sort, column) });
 
   const filtered = selected.length > 0 || Boolean(roleId);
   const open = (id: string) => navigate(`/requests/${id}`);
@@ -180,11 +237,16 @@ export function PipelinePage() {
           <table className="data-table data-table-calm">
             <thead>
               <tr>
-                <th className="w-[30%]">Candidate</th>
-                <th>Employee asked</th>
-                <th>Status</th>
-                <th>Requested by</th>
-                <th className="num">Last activity</th>
+                {COLUMNS.map((c) => (
+                  <SortHeader
+                    key={c.key}
+                    column={c.key}
+                    label={c.label}
+                    className={c.className}
+                    sort={sort}
+                    onSort={onSort}
+                  />
+                ))}
               </tr>
             </thead>
             <tbody>

@@ -93,6 +93,52 @@ describe('PipelinePage', () => {
     expect(requestUrl).toBe('/api/requests?mine=true&limit=200');
   });
 
+  it('sorts by a column header, flips on the second click, and reads sort from the URL', async () => {
+    const user = userEvent.setup();
+    renderAt('/pipeline');
+    await screen.findByRole('table');
+    const activity = screen.getByRole('columnheader', { name: /Last activity/ });
+    expect(activity).toHaveAttribute('aria-sort', 'descending');
+    expect(screen.getAllByTestId('sort-chevron')).toHaveLength(1);
+
+    await user.click(screen.getByRole('button', { name: 'Candidate' }));
+    expect(firstCells().map((s) => s.slice(0, 3))).toEqual(['Jil', 'Kim', 'Ter']);
+    expect(screen.getByRole('columnheader', { name: /Candidate/ })).toHaveAttribute(
+      'aria-sort',
+      'ascending',
+    );
+    expect(activity).not.toHaveAttribute('aria-sort');
+
+    await user.click(screen.getByRole('button', { name: 'Candidate' }));
+    expect(firstCells().map((s) => s.slice(0, 3))).toEqual(['Ter', 'Kim', 'Jil']);
+    expect(screen.getByRole('columnheader', { name: /Candidate/ })).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    );
+
+    // Clearing filters keeps the chosen sort.
+    await user.click(screen.getByRole('button', { name: 'Add status filter' }));
+    await user.click(within(screen.getByRole('option', { name: 'Closed' })).getByRole('checkbox'));
+    expect(screen.getByRole('button', { name: 'Remove Closed' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Clear all' }));
+    expect(screen.queryByRole('button', { name: 'Remove Closed' })).toBeNull();
+    expect(screen.getByRole('columnheader', { name: /Candidate/ })).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    );
+  });
+
+  it('honours a sort deep link', async () => {
+    renderAt('/pipeline?sort=status&dir=asc');
+    await screen.findByRole('table');
+    // "Candidate interested" < "Closed" < "Employee reached out".
+    expect(firstCells().map((s) => s.slice(0, 3))).toEqual(['Ter', 'Kim', 'Jil']);
+    expect(screen.getByRole('columnheader', { name: /Status/ })).toHaveAttribute(
+      'aria-sort',
+      'ascending',
+    );
+  });
+
   it('narrows by search text without touching the URL', async () => {
     const user = userEvent.setup();
     renderAt('/pipeline');
