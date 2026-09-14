@@ -9,7 +9,6 @@ import { ErrorState, Skeleton } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
 import { Popover } from '../components/Popover';
 import { StatusPill } from '../components/StatusPill';
-import { StrengthBar } from '../components/StrengthBar';
 import { firstName, formatDate, formatDateTime, formatRelative } from '../lib/format';
 import { STATUS_LABELS, eventSentence } from '../lib/status';
 
@@ -155,7 +154,6 @@ function Attributes({ r }: { r: RequestDetail }) {
         <Row label="Their connection">
           {r.connection ? (
             <>
-              <StrengthBar value={r.connection.strength} />
               {r.connection.shared_history ? (
                 <span className="block text-[12px] font-medium tracking-normal text-muted">
                   {r.connection.shared_history}
