@@ -130,6 +130,17 @@ export function useCreateRequest() {
   });
 }
 
+export function useNudgeRequest(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<RequestDetail>(`/requests/${id}/nudge`, {}),
+    onSuccess: async (data) => {
+      qc.setQueryData(keys.request(id), data);
+      await qc.invalidateQueries({ queryKey: ['requests'] });
+    },
+  });
+}
+
 export function useTransitionRequest(id: string) {
   const qc = useQueryClient();
   return useMutation({

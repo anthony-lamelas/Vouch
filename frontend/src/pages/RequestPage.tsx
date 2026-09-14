@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
-import { useRequest, useTransitionRequest } from '../api/queries';
+import { useNudgeRequest, useRequest, useTransitionRequest } from '../api/queries';
 import type { RequestDetail, Status } from '../api/types';
 import { Button } from '../components/Button';
 import { Chip } from '../components/Chip';
@@ -37,6 +37,7 @@ export function RequestPage() {
 
 function RequestView({ r }: { r: RequestDetail }) {
   const contactFirst = r.contact.full_name.split(' ')[0] ?? r.contact.full_name;
+  const nudge = useNudgeRequest(r.id);
   const events = useMemo(
     () =>
       [...r.events].sort(
@@ -70,9 +71,17 @@ function RequestView({ r }: { r: RequestDetail }) {
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <StatusPill status={r.status} />
             {r.stale ? (
-              <span className="text-[12.5px] font-medium text-amber-700">
-                No reply from {contactFirst} in {r.days_waiting} days. Nudge{' '}
-                {r.employee.full_name.split(' ')[0]} in Slack, or close the request.
+              <span className="inline-flex flex-wrap items-center gap-2 text-[12.5px] font-medium text-amber-700">
+                No reply from {contactFirst} in {r.days_waiting} days.
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => nudge.mutate()}
+                  disabled={nudge.isPending}
+                >
+                  {nudge.isPending ? 'Sending…' : `Nudge ${r.employee.full_name.split(' ')[0]}`}
+                </Button>
+                {nudge.isError ? <span className="text-red-700">Nudge failed.</span> : null}
               </span>
             ) : null}
             <span className="text-[12.5px]">

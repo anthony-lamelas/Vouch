@@ -137,10 +137,12 @@ export function RolesPage() {
                   <th
                     colSpan={6}
                     scope="rowgroup"
-                    className="sticky top-[33px] z-[1] bg-ground text-left px-3 py-1.5 text-[12px] font-semibold text-ink-2 border-b border-line"
+                    className="sticky top-[33px] z-[1] bg-ground text-left px-3 py-2.5 text-[15px] font-semibold text-ink border-b border-line"
                   >
                     {dept}
-                    <span className="ml-2 font-normal text-muted tnum">{list.length}</span>
+                    <span className="ml-2 text-[13px] font-normal text-muted tnum">
+                      {list.length}
+                    </span>
                   </th>
                 </tr>
                 {list.map((r) => (

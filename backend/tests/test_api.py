@@ -234,6 +234,51 @@ def test_decline_reroutes_to_next_strongest_employee(client: TestClient, db: Ses
     assert len(body["messages"]) == 2
 
 
+def test_candidate_pass_auto_closes(client: TestClient) -> None:
+    role = _first_role(client, "data")
+    page = client.get(f"/api/roles/{role['id']}/candidates", params={"limit": 40}).json()
+    cand = next(c for c in page["items"] if c["active_request"] is None)
+    req = client.post(
+        "/api/requests", json={"contact_id": cand["contact"]["id"], "role_id": role["id"]}
+    ).json()
+    client.post(f"/api/requests/{req['id']}/transition", json={"to_status": "employee_accepted"})
+    r = client.post(
+        f"/api/requests/{req['id']}/transition", json={"to_status": "candidate_declined"}
+    ).json()
+    assert r["status"] == "closed"
+    assert r["closed_outcome"].startswith("Closed automatically")
+    assert [e["to_status"] for e in r["events"]][-2:] == ["candidate_declined", "closed"]
+    assert r["events"][-1]["actor_label"] == "VOUCH"
+
+
+def test_nudge_resets_stale_clock_and_messages_employee(client: TestClient, db: Session) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    req = db.scalars(
+        select(ReferralRequest).where(ReferralRequest.status == "employee_accepted")
+    ).first()
+    assert req is not None
+    accepted = next(e for e in req.events if e.to_status == "employee_accepted")
+    accepted.created_at = datetime.now(UTC) - timedelta(days=10)
+    db.commit()
+    before = client.get(f"/api/requests/{req.id}").json()
+    assert before["stale"] is True
+    r = client.post(f"/api/requests/{req.id}/nudge")
+    assert r.status_code == 200, r.text
+    after = r.json()
+    assert after["status"] == "employee_accepted"
+    assert after["stale"] is False and after["days_waiting"] == 0
+    assert len(after["messages"]) == len(before["messages"]) + 1
+    assert after["messages"][-1]["body"].startswith("Quick nudge from Local Recruiter")
+    assert after["events"][-1]["note"].startswith("Nudged")
+
+    waiting = db.scalars(
+        select(ReferralRequest).where(ReferralRequest.status == "requested")
+    ).first()
+    assert waiting is not None
+    assert client.post(f"/api/requests/{waiting.id}/nudge").status_code == 409
+
+
 def test_slack_button_click_transitions_request(client: TestClient, db: Session) -> None:
     req = db.scalars(select(ReferralRequest).where(ReferralRequest.status == "requested")).first()
     assert req is not None
@@ -305,11 +350,14 @@ def test_stale_flag_after_seven_days(client: TestClient, db: Session) -> None:
         select(ReferralRequest).where(ReferralRequest.status == "employee_accepted")
     ).first()
     assert req is not None
-    accepted = next(e for e in req.events if e.to_status == "employee_accepted")
-    accepted.created_at = datetime.now(UTC) - timedelta(days=9)
+    # Every accepted-state event (including nudges) must be old for the request to read stale.
+    accepted_events = [e for e in req.events if e.to_status == "employee_accepted"]
+    for e in accepted_events:
+        e.created_at = datetime.now(UTC) - timedelta(days=9)
     db.commit()
     body = client.get(f"/api/requests/{req.id}").json()
     assert body["stale"] is True and body["days_waiting"] == 9
+    accepted = accepted_events[0]
     fresh = db.scalars(select(ReferralRequest).where(ReferralRequest.status == "requested")).first()
     assert fresh is not None
     assert client.get(f"/api/requests/{fresh.id}").json()["stale"] is False

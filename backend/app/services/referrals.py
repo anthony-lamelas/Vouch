@@ -25,6 +25,7 @@ from app.models import (
 from app.services.lifecycle import (
     ACTIVE_STATUSES,
     DeclineReason,
+    IllegalTransitionError,
     Status,
     assert_transition,
 )
@@ -32,6 +33,7 @@ from app.services.outreach import Drafts, OutreachContext, OutreachGenerator
 from app.services.ownership import display_name, recruiter_names
 from app.services.slack import (
     Notifier,
+    action_buttons,
     build_request_blocks,
     resolve_recipient,
     status_blocks,
@@ -233,6 +235,66 @@ class ReferralService:
         self._update_slack(req, to_status)
         if to_status == Status.EMPLOYEE_DECLINED:
             self._reroute(req)
+        elif to_status == Status.CANDIDATE_DECLINED:
+            self._auto_close(req, "Closed automatically: candidate passed")
+        self.db.commit()
+        return self.get(req.id)
+
+    def _auto_close(self, req: ReferralRequest, note: str) -> None:
+        current = Status(req.status)
+        req.status = Status.CLOSED.value
+        req.closed_outcome = note
+        self._event(req, current, Status.CLOSED, "system", note)
+        self._update_slack(req, Status.CLOSED)
+
+    def nudge(self, request_id: uuid.UUID, *, actor_email: str, actor_name: str) -> ReferralRequest:
+        """Ping the employee again about a request they agreed to act on."""
+        req = self.get(request_id)
+        current = Status(req.status)
+        if current != Status.EMPLOYEE_ACCEPTED:
+            raise IllegalTransitionError(current, current)
+        employee = req.employee
+        contact_first = req.contact.full_name.split(" ")[0]
+        text = (
+            f"Quick nudge from {actor_name}: any word from {contact_first} about "
+            f"*<{req.role.job_url}|{req.role.title}>*? Tap a button below when you know, "
+            f"or just reply here."
+        )
+        blocks: list[dict[str, Any]] = [
+            {"type": "section", "text": {"type": "mrkdwn", "text": text}},
+            {
+                "type": "actions",
+                "block_id": "vouch_actions",
+                "elements": action_buttons(current, str(req.id)),
+            },
+        ]
+        recipient, _ = resolve_recipient(self.settings, employee)
+        result = (
+            self.notifier.send(
+                recipient=recipient,
+                text=f"Nudge: any word from {contact_first} about {req.role.title}?",
+                blocks=blocks,
+            )
+            if recipient
+            else None
+        )
+        message = OutreachMessage(
+            request_id=req.id,
+            employee_id=employee.id,
+            channel="slack",
+            recipient=recipient or "(no slack user)",
+            body=f"Quick nudge from {actor_name}: any word from {contact_first} about "
+            f"{req.role.title}?",
+            blocks=blocks,
+            external_channel_id=result.channel_id if result else None,
+            external_ts=result.ts if result else None,
+            delivered=bool(result and result.delivered),
+            error=(result.error if result else "no_recipient"),
+        )
+        message.employee = employee
+        req.messages.append(message)
+        # Same-state event: resets the stale clock and shows in the timeline.
+        self._event(req, current, current, actor_email, f"Nudged {employee.full_name}")
         self.db.commit()
         return self.get(req.id)
 
@@ -268,6 +330,9 @@ class ReferralService:
         declined.add(req.employee_id)
         nxt = strongest_connection(self.db, req.contact_id, exclude=declined)
         if nxt is None:
+            self._auto_close(
+                req, "Closed automatically: no other colleague is connected to this person"
+            )
             return
         previous = req.employee
         employee = nxt.employee

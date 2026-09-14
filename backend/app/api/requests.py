@@ -92,3 +92,18 @@ def transition_request(
     except IllegalTransitionError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return request_detail(service.db, req)
+
+
+@router.post("/{request_id}/nudge", response_model=RequestDetail)
+def nudge_request(request_id: uuid.UUID, service: Referrals, user: User) -> RequestDetail:
+    """Ping the employee again. Only meaningful while they have agreed but not reported back."""
+    try:
+        req = service.nudge(request_id, actor_email=user.email, actor_name=user.name)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Request not found") from exc
+    except IllegalTransitionError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Nudges only apply while the employee is reaching out ({exc.current})",
+        ) from exc
+    return request_detail(service.db, req)
