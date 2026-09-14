@@ -5,7 +5,6 @@ import type {
   ContactDetail,
   CreateRequestIn,
   FilterOptions,
-  OutreachItem,
   RequestDetail,
   RequestPage,
   RoleDetail,
@@ -26,7 +25,6 @@ export const keys = {
   stats: ['stats'] as const,
   requests: (params: RequestListParams) => ['requests', params] as const,
   request: (id: string) => ['requests', id] as const,
-  outreach: ['outreach'] as const,
 };
 
 export function useRoles() {
@@ -108,13 +106,6 @@ export function useRequest(id: string) {
   });
 }
 
-export function useOutreach() {
-  return useQuery({
-    queryKey: keys.outreach,
-    queryFn: () => api.get<OutreachItem[]>('/outreach', { limit: 200 }),
-  });
-}
-
 export function useCreateRequest() {
   const qc = useQueryClient();
   return useMutation({
@@ -125,7 +116,6 @@ export function useCreateRequest() {
         qc.invalidateQueries({ queryKey: keys.contact(data.contact.id) }),
         qc.invalidateQueries({ queryKey: ['requests'] }),
         qc.invalidateQueries({ queryKey: keys.stats }),
-        qc.invalidateQueries({ queryKey: keys.outreach }),
       ]);
     },
   });
@@ -142,7 +132,6 @@ export function useTransitionRequest(id: string) {
         qc.invalidateQueries({ queryKey: ['roles'] }),
         qc.invalidateQueries({ queryKey: keys.contact(data.contact.id) }),
         qc.invalidateQueries({ queryKey: keys.stats }),
-        qc.invalidateQueries({ queryKey: keys.outreach }),
       ]);
     },
   });

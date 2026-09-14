@@ -169,6 +169,7 @@ export function PipelinePage() {
                 <th>Employee asked</th>
                 <th>Status</th>
                 <th>Requested by</th>
+                <th>Last message to employee</th>
                 <th className="num">Last activity</th>
               </tr>
             </thead>
@@ -211,6 +212,29 @@ export function PipelinePage() {
                     </div>
                   </td>
                   <td className="text-ink-2 text-[12.5px]">{r.requested_by}</td>
+                  <td>
+                    {r.last_message ? (
+                      <div className="max-w-[300px]">
+                        <div
+                          className="text-[12.5px] text-ink-2 truncate"
+                          title={r.last_message.excerpt}
+                        >
+                          {r.last_message.excerpt}
+                        </div>
+                        <div className="text-[11.5px] text-muted">
+                          {r.last_message.delivered ? (
+                            <span className="text-emerald-700">Delivered via Slack</span>
+                          ) : (
+                            <span title={r.last_message.error ?? undefined}>Not delivered</span>
+                          )}
+                          {' · '}
+                          {formatRelative(r.last_message.created_at)}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-faint text-[12.5px]">—</span>
+                    )}
+                  </td>
                   <td className="num tnum text-ink-2 whitespace-nowrap" title={r.updated_at}>
                     {formatRelative(r.last_event_at ?? r.updated_at)}
                   </td>

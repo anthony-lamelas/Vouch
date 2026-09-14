@@ -149,6 +149,14 @@ class MessageOut(BaseModel):
     employee: EmployeeBrief
 
 
+class LastMessageBrief(BaseModel):
+    excerpt: str
+    delivered: bool
+    error: str | None
+    created_at: datetime
+    employee_name: str
+
+
 class RequestSummary(BaseModel):
     id: uuid.UUID
     status: Status
@@ -164,6 +172,8 @@ class RequestSummary(BaseModel):
     days_waiting: int | None = None
     stale: bool = False
     is_mine: bool = False
+    # What the employee last received from VOUCH, so the pipeline can show it inline.
+    last_message: LastMessageBrief | None = None
 
 
 class RequestDetail(RequestSummary):
@@ -192,14 +202,6 @@ class TransitionIn(BaseModel):
     to_status: Status
     note: str | None = Field(default=None, max_length=2000)
     reason: DeclineReason | None = None
-
-
-class OutreachItem(BaseModel):
-    message: MessageOut
-    request_id: uuid.UUID
-    request_status: Status
-    contact: ContactBrief
-    role: RoleBrief
 
 
 # ---- Meta ------------------------------------------------------------------------------------

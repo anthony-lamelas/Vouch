@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { useCandidates, useFilterOptions, useRole } from '../api/queries';
+import { useCandidates, useFilterOptions, useRequests, useRole } from '../api/queries';
 import type { CandidateOut, TieredName } from '../api/types';
 import { Button } from '../components/Button';
 import { Chip } from '../components/Chip';
@@ -48,6 +48,7 @@ export function RoleDetailPage() {
   const role = useRole(id);
   const options = useFilterOptions();
   const candidates = useCandidates(id, filters);
+  const roleRequests = useRequests({ role_id: id });
 
   const tierByCompany = useMemo(() => {
     const m = new Map<string, number>();
@@ -175,6 +176,36 @@ export function RoleDetailPage() {
             View posting on Ashby
           </a>
         </PageHeader>
+      ) : null}
+
+      {roleRequests.data && roleRequests.data.items.length > 0 ? (
+        <section
+          aria-label="Requests for this role"
+          className="mb-3 rounded-md border border-line bg-surface px-4 py-3"
+        >
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-[12px] font-semibold uppercase tracking-wide text-ink-2">
+              Requests for this role
+              <span className="ml-2 font-normal normal-case tracking-normal text-muted tnum">
+                {roleRequests.data.total}
+              </span>
+            </h2>
+            <Link to={`/pipeline?role_id=${id}&scope=all`} className="link text-[12.5px]">
+              Open in pipeline
+            </Link>
+          </div>
+          <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-1.5">
+            {roleRequests.data.items.slice(0, 6).map((r) => (
+              <li key={r.id} className="flex items-center gap-2 text-[13px]">
+                <Link to={`/requests/${r.id}`} className="font-medium text-ink hover:underline">
+                  {r.contact.full_name}
+                </Link>
+                <span className="text-muted">via {r.employee.full_name.split(' ')[0]}</span>
+                <StatusPill status={r.status} />
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
 
       {/* Filter bar */}

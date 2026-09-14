@@ -70,6 +70,7 @@ const page: RequestPage = {
       days_waiting: null,
       stale: false,
       is_mine: true,
+      last_message: null,
     },
     {
       id: 'req-new',
@@ -85,6 +86,7 @@ const page: RequestPage = {
       days_waiting: null,
       stale: false,
       is_mine: true,
+      last_message: null,
     },
   ],
 };

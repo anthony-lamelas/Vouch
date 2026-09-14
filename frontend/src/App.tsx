@@ -6,7 +6,6 @@ import { RequireAuth } from './auth/RequireAuth';
 import { AppShell } from './layout/AppShell';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
-import { OutreachPage } from './pages/OutreachPage';
 import { PipelinePage } from './pages/PipelinePage';
 import { RequestPage } from './pages/RequestPage';
 import { RoleDetailPage } from './pages/RoleDetailPage';
@@ -40,7 +39,6 @@ export function AppRoutes() {
           <Route path="/roles/:id" element={<RoleDetailPage />} />
           <Route path="/pipeline" element={<PipelinePage />} />
           <Route path="/requests/:id" element={<RequestPage />} />
-          <Route path="/outreach" element={<OutreachPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>

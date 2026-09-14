@@ -71,7 +71,7 @@ Transitions: requested → {employee_accepted, employee_declined, closed}; emplo
 
 ## 5. Employee channel: Slack
 
-Workspace: vouchdemo.slack.com. A Slack app ("VOUCH") DMs the employee a card with the candidate, the role, a drafted outreach message, and action buttons. Button clicks hit `/api/slack/interactions`; free-text replies in the DM arrive via `/api/slack/events` and are classified into a status plus a note (keyword classifier by default, Claude behind a flag). In the demo every DM is routed to one Slack user (the person playing Bob) with a line naming the employee it would have gone to. The app keeps an Outreach panel listing every message sent and its current status so a reviewer without Slack access can follow along.
+Workspace: vouchdemo.slack.com. A Slack app ("VOUCH") DMs the employee a card with the candidate, the role, a drafted outreach message, and action buttons. Button clicks hit `/api/slack/interactions`; free-text replies in the DM arrive via `/api/slack/events` and are classified into a status plus a note (keyword classifier by default, Claude behind a flag). In the demo every DM is routed to one Slack user (the person playing Bob) with a line naming the employee it would have gone to. Every message sent is stored and shown on the request page and as a "last message" column in the pipeline, so a reviewer without Slack access can follow along.
 
 ## 6. Outreach drafting
 
@@ -95,5 +95,5 @@ Consent and network-visibility controls, CSV upload, ATS integration, bonus payo
 2. Open "Software Engineer, Infrastructure". Top candidates ranked by score with reasons. Filter to company "Stripe" and skill "Kubernetes": Priya Natarajan ranks near the top.
 3. Open a candidate. Two employees know them; the strongest edge is Bob (worked together at Stripe, 2019–2021). Click Request Referral.
 4. Switch to Slack. Bob's DM arrives with the drafted message and buttons. Click "I'll reach out", then "Contacted", then type "she's interested, wants to chat next week".
-5. Back in the app: pipeline shows Candidate interested, the timeline shows every step with actor and time, the Outreach panel shows the message that went out.
+5. Back in the app: pipeline shows Candidate interested with the message that went out, and the timeline shows every step with actor and time.
 6. Decline one on purpose to show automatic re-routing to the next-strongest employee.

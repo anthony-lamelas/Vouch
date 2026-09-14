@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import admin, contacts, meta, outreach, requests, roles, slack
+from app.api import admin, contacts, meta, requests, roles, slack
 from app.config import get_settings
 
 settings = get_settings()
@@ -59,15 +59,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for r in (
-    meta.router,
-    roles.router,
-    contacts.router,
-    requests.router,
-    outreach.router,
-    slack.router,
-    admin.router,
-):
+for r in (meta.router, roles.router, contacts.router, requests.router, slack.router, admin.router):
     app.include_router(r, prefix="/api")
 
 

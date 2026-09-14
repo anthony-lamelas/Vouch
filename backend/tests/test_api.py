@@ -305,9 +305,16 @@ def test_stale_flag_after_seven_days(client: TestClient, db: Session) -> None:
     assert isinstance(accepted, ReferralEvent)
 
 
-def test_outreach_and_stats(client: TestClient) -> None:
-    items = client.get("/api/outreach").json()
-    assert items and items[0]["message"]["body"]
+def test_pipeline_rows_carry_last_message(client: TestClient) -> None:
+    page = client.get("/api/requests").json()
+    assert page["items"]
+    first = page["items"][0]
+    assert first["last_message"]["excerpt"]
+    assert first["last_message"]["employee_name"] == first["employee"]["full_name"]
+    assert client.get("/api/outreach").status_code == 404
+
+
+def test_stats(client: TestClient) -> None:
     stats = client.get("/api/stats").json()
     assert stats["contacts"] == 300
     assert stats["requests_total"] >= 6
