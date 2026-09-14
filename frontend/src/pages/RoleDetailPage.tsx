@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useCandidates, useFilterOptions, useRequests, useRole } from '../api/queries';
 import type { CandidateOut, TieredName } from '../api/types';
 import { Button } from '../components/Button';
-import { Chip, RemovableChip } from '../components/Chip';
+import { RemovableChip } from '../components/Chip';
 import { Drawer } from '../components/Drawer';
 import { EmptyState, ErrorState, Skeleton, TableSkeleton } from '../components/EmptyState';
 import { ExternalIcon } from '../components/Icons';
@@ -11,7 +11,6 @@ import { MultiSelect, type Option } from '../components/MultiSelect';
 import { PageHeader } from '../components/PageHeader';
 import { Pagination } from '../components/Pagination';
 import { StatusPill } from '../components/StatusPill';
-import { TierBadge } from '../components/TierBadge';
 import {
   TIERS,
   activeFilterCount,
@@ -56,12 +55,6 @@ export function RoleDetailPage() {
   const options = useFilterOptions();
   const candidates = useCandidates(id, filters);
   const roleRequests = useRequests({ role_id: id });
-
-  const tierByCompany = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const c of options.data?.companies ?? []) m.set(c.name, c.tier);
-    return m;
-  }, [options.data]);
 
   const write = useCallback(
     (next: ReturnType<typeof parseFilters>, contact: string | null) => {
@@ -117,15 +110,6 @@ export function RoleDetailPage() {
       {role.data ? (
         <>
           <PageHeader title={role.data.title}>
-            <span className="text-[13px] text-muted">
-              {role.data.is_mine ? (
-                <>
-                  Owner <span className="text-cobalt">You</span>
-                </>
-              ) : (
-                `Owner ${role.data.owner_name ?? 'unassigned'}`
-              )}
-            </span>
             <a
               href={role.data.job_url}
               target="_blank"
@@ -141,13 +125,6 @@ export function RoleDetailPage() {
             {role.data.is_remote ? ' (remote)' : ''} · {titleCase(role.data.seniority)}{' '}
             {titleCase(role.data.job_family)}
           </p>
-          {role.data.required_skills.length > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-1" aria-label="Required skills">
-              {role.data.required_skills.map((s) => (
-                <Chip key={s}>{s}</Chip>
-              ))}
-            </div>
-          ) : null}
         </>
       ) : null}
 
@@ -270,7 +247,6 @@ export function RoleDetailPage() {
                     key={c.contact.id}
                     c={c}
                     selected={c.contact.id === contactId}
-                    tier={tierByCompany.get(c.contact.current_company)}
                     onOpen={() => openContact(c.contact.id)}
                   />
                 ))}
@@ -318,12 +294,10 @@ function toOptions(list: TieredName[] | undefined, pinnedFirst: string[] = []): 
 function CandidateRow({
   c,
   selected,
-  tier,
   onOpen,
 }: {
   c: CandidateOut;
   selected: boolean;
-  tier: number | undefined;
   onOpen: () => void;
 }) {
   const top = c.top_connection;
@@ -347,7 +321,6 @@ function CandidateRow({
           <span className="truncate">
             {c.contact.current_title} at {c.contact.current_company}
           </span>
-          {tier !== undefined ? <TierBadge tier={tier} /> : null}
           <span aria-hidden>·</span>
           <span className="whitespace-nowrap">{c.contact.location}</span>
         </div>
