@@ -24,7 +24,14 @@ class Settings(BaseSettings):
     slack_bot_token: str = ""
     slack_signing_secret: str = ""
     slack_demo_user_id: str = Field(
-        default="", description="If set, every employee DM is routed to this Slack user"
+        default="", description="Fallback Slack user for demo routing when no email match is found"
+    )
+    slack_route_to_requester: bool = Field(
+        default=True,
+        description=(
+            "Demo routing: DM the recruiter who made the request, found in Slack by their login "
+            "email, instead of the employee. Falls back to SLACK_DEMO_USER_ID."
+        ),
     )
 
     # LLM
