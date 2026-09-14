@@ -24,6 +24,25 @@ class DeclineReason(StrEnum):
     OTHER = "other"
 
 
+class CandidatePassReason(StrEnum):
+    HAPPY_WHERE_THEY_ARE = "happy_where_they_are"
+    NOT_THE_ROLE = "not_the_role"
+    TIMING = "timing"
+    NO_REPLY = "no_reply"
+    OTHER = "other"
+
+
+# Why the candidate passed, as reported by the employee. Shown on the timeline and in Slack.
+CANDIDATE_PASS_LABELS: Final[dict[CandidatePassReason | None, str]] = {
+    CandidatePassReason.HAPPY_WHERE_THEY_ARE: "Happy where they are",
+    CandidatePassReason.NOT_THE_ROLE: "Not interested in this role",
+    CandidatePassReason.TIMING: "Bad timing, maybe later",
+    CandidatePassReason.NO_REPLY: "Never heard back",
+    CandidatePassReason.OTHER: "Other",
+    None: "Candidate passed",
+}
+
+
 # Why an employee passed, in the recruiter's words. Shown on the timeline and in Slack.
 DECLINE_LABELS: Final[dict[DeclineReason | None, str]] = {
     DeclineReason.DONT_KNOW_WELL: "Doesn't know them well enough",
