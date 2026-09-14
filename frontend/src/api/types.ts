@@ -233,6 +233,8 @@ export interface AskPreviewIn {
 export interface AskPreviewOut {
   employee: EmployeeBrief;
   connection: ConnectionOut;
+  /** The note to the employee asking for the referral; prefills the drawer's message. */
+  ask: string;
   casual: string;
   formal: string;
   reasons: Reason[];
