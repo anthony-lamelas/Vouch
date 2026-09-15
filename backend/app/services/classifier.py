@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 from collections import deque
 from dataclasses import dataclass
@@ -145,43 +144,5 @@ class KeywordClassifier:
         return Classification(None, None, 0.0, self.name)
 
 
-class ClaudeClassifier:
-    name = "claude"
-
-    def __init__(self, api_key: str, model: str) -> None:
-        self._api_key = api_key
-        self._model = model
-        self._fallback = KeywordClassifier()
-
-    def classify(self, text: str, current: Status) -> Classification:
-        try:
-            import anthropic
-
-            client = anthropic.Anthropic(api_key=self._api_key, timeout=6.0, max_retries=0)
-            options = [s.value for s in EMPLOYEE_SETTABLE if path_to(current, s) is not None]
-            prompt = (
-                "An employee replied to a referral request in Slack. Classify the reply into "
-                f"one of these statuses: {options}, or null if none applies. If the status is "
-                "employee_declined also return reason: 'dont_know_well' or 'not_a_fit'. "
-                'Reply with JSON only: {"status": ..., "reason": ..., "confidence": 0-1}.\n\n'
-                f"Current status: {current.value}\nReply: {text!r}"
-            )
-            message = client.messages.create(
-                model=self._model,
-                max_tokens=100,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            block = message.content[0]
-            raw = block.text if block.type == "text" else ""
-            data = json.loads(raw[raw.find("{") : raw.rfind("}") + 1])
-            status = Status(data["status"]) if data.get("status") else None
-            reason = DeclineReason(data["reason"]) if data.get("reason") else None
-            return Classification(status, reason, float(data.get("confidence", 0.5)), self.name)
-        except Exception:
-            return self._fallback.classify(text, current)
-
-
-def get_classifier(settings: Settings) -> KeywordClassifier | ClaudeClassifier:
-    if settings.reply_classifier_mode == "claude" and settings.anthropic_api_key:
-        return ClaudeClassifier(settings.anthropic_api_key, settings.anthropic_model)
+def get_classifier(settings: Settings) -> KeywordClassifier:
     return KeywordClassifier()

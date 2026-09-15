@@ -35,10 +35,6 @@ class Settings(BaseSettings):
     )
 
     # LLM
-    anthropic_api_key: str = ""
-    anthropic_model: str = "claude-sonnet-5"
-    outreach_mode: Literal["template", "claude"] = "template"
-    reply_classifier_mode: Literal["keyword", "claude"] = "keyword"
 
     # Admin / seed
     admin_token: str = ""
