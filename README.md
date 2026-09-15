@@ -45,6 +45,8 @@ pnpm install
 pnpm dev                                    # http://localhost:5173, proxies /api to :8000
 ```
 
+**Slack is not part of local development.** Slack delivers button clicks and replies by calling the app over HTTPS, which a machine on localhost cannot receive without a public tunnel and per-session changes to the Slack app's request URLs. Locally, asks are still created and every Slack message is recorded and shown on the request page, but nothing is sent, and every status change can be driven from the request page instead. The full Slack loop runs on the hosted demo, where DMs go to whoever made the request.
+
 ### Quality gates
 
 ```bash
