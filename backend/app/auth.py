@@ -20,14 +20,19 @@ class CurrentUser:
     name: str
 
 
-def _name_from_claims(claims: dict[str, Any], email: str) -> str:
+def _name_from_claims(claims: dict[str, Any], email: str, settings: Settings) -> str:
+    """Display name: the demo team's configured name wins, then the auth profile, then the
+    email ('milesjuddporter@…' would otherwise read 'Milesjuddporter')."""
+    from app.services.ownership import demo_team, name_from_email
+
+    configured = demo_team(settings).get(email)
+    if configured:
+        return configured
     meta = claims.get("user_metadata") or {}
     for key in ("full_name", "name"):
         value = meta.get(key)
         if isinstance(value, str) and value.strip():
             return value.strip()
-    from app.services.ownership import name_from_email
-
     return name_from_email(email)
 
 
@@ -47,7 +52,7 @@ def verify_token(token: str, settings: Settings) -> CurrentUser:
             )
             email = str(claims.get("email", ""))
             return CurrentUser(
-                id=str(claims["sub"]), email=email, name=_name_from_claims(claims, email)
+                id=str(claims["sub"]), email=email, name=_name_from_claims(claims, email, settings)
             )
         except jwt.PyJWTError as exc:
             errors.append(f"jwks: {exc}")
@@ -58,7 +63,7 @@ def verify_token(token: str, settings: Settings) -> CurrentUser:
             )
             email = str(claims.get("email", ""))
             return CurrentUser(
-                id=str(claims["sub"]), email=email, name=_name_from_claims(claims, email)
+                id=str(claims["sub"]), email=email, name=_name_from_claims(claims, email, settings)
             )
         except jwt.PyJWTError as exc:
             errors.append(f"hs256: {exc}")

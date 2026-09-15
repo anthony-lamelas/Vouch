@@ -90,6 +90,19 @@ def test_role_ownership_and_mine_filters(client: TestClient) -> None:
     assert detail["events"][-1]["note"].startswith("Not a fit for this role")
 
 
+def test_signed_in_name_prefers_the_configured_team_name() -> None:
+    from app.auth import _name_from_claims
+    from app.config import Settings
+
+    settings = Settings(demo_recruiter_teammates="milesjuddporter@gmail.com:Miles Judd Porter")
+    assert _name_from_claims({}, "milesjuddporter@gmail.com", settings) == "Miles Judd Porter"
+    assert (
+        _name_from_claims({"user_metadata": {"full_name": "Sam O"}}, "sam@x.com", settings)
+        == "Sam O"
+    )
+    assert _name_from_claims({}, "dana.whitfield@x.com", settings) == "Dana Whitfield"
+
+
 def test_teammates_share_the_demo_pipeline(client: TestClient) -> None:
     as_teammate = {"X-Demo-User": "teammate@vouch.local"}
     assert client.get("/api/me", headers=as_teammate).json()["name"] == "Team Mate"

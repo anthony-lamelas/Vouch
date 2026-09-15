@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     )
     demo_recruiter_name: str = ""
     demo_recruiter_teammates: str = Field(
-        default="milesjuddporter@gmail.com:Miles Porter",
+        default="milesjuddporter@gmail.com:Miles Judd Porter",
         description="Other logins on the demo recruiter's team, comma-separated 'email:Name'. "
         "Everyone on the team sees the same 'My roles' and 'My requests'",
     )
