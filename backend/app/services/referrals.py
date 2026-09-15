@@ -351,18 +351,24 @@ class ReferralService:
         self._event(req, current, Status.CLOSED, "system", note)
 
     def nudge(self, request_id: uuid.UUID, *, actor_email: str, actor_name: str) -> ReferralRequest:
-        """Ping the employee again about a request they agreed to act on."""
+        """Ping the employee again: about the ask itself, or about the candidate's reply."""
         req = self.get(request_id)
         current = Status(req.status)
-        if current != Status.EMPLOYEE_ACCEPTED:
+        if current not in {Status.REQUESTED, Status.EMPLOYEE_ACCEPTED}:
             raise IllegalTransitionError(current, current)
         employee = req.employee
         contact_first = req.contact.full_name.split(" ")[0]
-        text = (
-            f"Quick nudge from {actor_name}: any word from {contact_first} about "
-            f"*<{req.role.job_url}|{req.role.title}>*? Tap a button below when you know, "
-            f"or just reply here."
-        )
+        role_link = f"*<{req.role.job_url}|{req.role.title}>*"
+        if current == Status.REQUESTED:
+            text = (
+                f"Quick nudge from {actor_name}: would you be up for reaching out to "
+                f"{contact_first} about {role_link}? Tap a button below either way."
+            )
+        else:
+            text = (
+                f"Quick nudge from {actor_name}: any word from {contact_first} about "
+                f"{role_link}? Tap a button below when you know."
+            )
         blocks: list[dict[str, Any]] = [
             {"type": "section", "text": {"type": "mrkdwn", "text": text}},
             {
@@ -388,8 +394,13 @@ class ReferralService:
             employee_id=employee.id,
             channel="slack",
             recipient=recipient or "(no slack user)",
-            body=f"Quick nudge from {actor_name}: any word from {contact_first} about "
-            f"{req.role.title}?",
+            body=(
+                f"Quick nudge from {actor_name}: would you be up for reaching out to "
+                f"{contact_first} about {req.role.title}?"
+                if current == Status.REQUESTED
+                else f"Quick nudge from {actor_name}: any word from {contact_first} about "
+                f"{req.role.title}?"
+            ),
             blocks=blocks,
             external_channel_id=result.channel_id if result else None,
             external_ts=result.ts if result else None,

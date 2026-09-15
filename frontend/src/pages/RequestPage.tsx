@@ -419,6 +419,8 @@ function Actions({
   const [attemptedClose, setAttemptedClose] = useState(false);
   const [nextEmployee, setNextEmployee] = useState<string | null>(null);
   const declined = r.status === 'employee_declined';
+  // The employee has the ball in these two states; a nudge is allowed at any age.
+  const canNudge = r.status === 'requested' || r.status === 'employee_accepted';
   const bookingSent = r.events.some(
     (e) => e.from_status === 'candidate_interested' && e.to_status === 'candidate_interested',
   );
@@ -468,7 +470,7 @@ function Actions({
 
       {r.stale ? (
         <span className="text-[13px] font-medium text-needs-text">
-          No reply from {r.contact.full_name.split(' ')[0]} in {r.days_waiting} days.
+          No reply in {r.days_waiting} days.
         </span>
       ) : null}
       {r.status === 'candidate_interested' ? (
@@ -509,9 +511,9 @@ function Actions({
           Ask someone else
         </Button>
       ) : null}
-      {r.stale ? (
+      {canNudge ? (
         <Button
-          variant="primary"
+          variant={r.stale ? 'primary' : 'secondary'}
           size="sm"
           onClick={() => nudge.mutate()}
           disabled={nudge.isPending}

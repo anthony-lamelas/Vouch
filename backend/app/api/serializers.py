@@ -68,8 +68,10 @@ def actor_label(
 
 
 def waiting_days(r: ReferralRequest, now: datetime | None = None) -> int | None:
-    """Days the candidate has been waited on since the employee agreed to reach out."""
-    if r.status != Status.EMPLOYEE_ACCEPTED.value:
+    """Days spent waiting on the employee: for an answer to the ask, or for the candidate's
+    reply once they agreed to reach out. Counted from the latest event in that state (a nudge
+    resets it)."""
+    if r.status not in {Status.REQUESTED.value, Status.EMPLOYEE_ACCEPTED.value}:
         return None
     since = next(
         (e.created_at for e in reversed(r.events) if e.to_status == r.status), r.updated_at
