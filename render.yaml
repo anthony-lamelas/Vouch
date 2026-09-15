@@ -28,9 +28,5 @@ services:
         sync: false
       - key: SLACK_DEMO_USER_ID
         sync: false
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: OUTREACH_MODE
-        value: template
       - key: ADMIN_TOKEN
         generateValue: true

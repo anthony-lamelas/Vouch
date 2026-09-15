@@ -30,7 +30,7 @@ Backend (Python 3.12 via [uv](https://docs.astral.sh/uv/)):
 ```bash
 docker compose up -d db                     # just Postgres
 cd backend
-cp ../.env.example .env                     # AUTH_DISABLED=true is the default
+cp ../.env.example .env                     # Windows PowerShell: Copy-Item ..\.env.example .env
 uv sync --all-groups
 uv run alembic upgrade head
 uv run python -m app.cli seed               # ~20s: 40 employees, 3,000 contacts, roles, scores
@@ -45,12 +45,16 @@ pnpm install
 pnpm dev                                    # http://localhost:5173, proxies /api to :8000
 ```
 
+**Slack is not part of local development.** Slack delivers button clicks and replies by calling the app over HTTPS, which a machine on localhost cannot receive without a public tunnel and per-session changes to the Slack app's request URLs. Locally, asks are still created and every Slack message is recorded and shown on the request page, but nothing is sent, and every status change can be driven from the request page instead. The full Slack loop runs on the hosted demo, where DMs go to whoever made the request.
+
 ### Quality gates
 
 ```bash
 cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy app && uv run pytest
 cd frontend && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
 ```
+
+Every command above is the same on macOS, Linux and Windows. The only Windows caveats: `&&` chaining needs PowerShell 7 or Command Prompt (Windows PowerShell 5.1 does not support it, so run the commands one per line there), and the tests need the Postgres container from `docker compose up -d db`.
 
 CI runs the same commands on every push, builds the Docker image, and deploys to Render only from a green `main`.
 
@@ -66,7 +70,6 @@ All settings are environment variables (see [`.env.example`](.env.example)). The
 | `SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET` | Enable real Slack delivery. Blank = messages recorded but not sent. |
 | `SLACK_ROUTE_TO_REQUESTER` | Default `true`: the DM goes to the recruiter who made the request, matched to a Slack member by login email, so each reviewer plays the employee in their own DMs |
 | `SLACK_DEMO_USER_ID` | Fallback Slack user when no email match is found |
-| `ANTHROPIC_API_KEY`, `OUTREACH_MODE=claude` | Optional Claude-tailored drafts (template fallback) |
 | `ADMIN_TOKEN` | Protects `POST /api/admin/reset-demo` and `POST /api/admin/sync-roles` |
 | `DEMO_RECRUITER_EMAIL`, `DEMO_RECRUITER_NAME` | The demo login: owns the Research & Development roles in the seed and is shown by name (derived from the email unless set) |
 | `DEMO_RECRUITER_TEAMMATES` | Other logins on the demo team, comma-separated `email:Name`. Teammates share the same "My roles" and "My requests", so a reviewer signing in with their own email sees the demo pipeline |
@@ -88,6 +91,7 @@ The happy path ends with the candidate booking a recruiter screen: when the empl
 uv run python -m app.cli seed             # wipe and reseed everything
 uv run python -m app.cli sync-roles       # pull the latest Ashby postings, recompute scores
 curl -X POST -H "X-Admin-Token: $ADMIN_TOKEN" https://<host>/api/admin/reset-demo
+# Windows PowerShell: curl.exe -X POST -H "X-Admin-Token: $env:ADMIN_TOKEN" https://<host>/api/admin/reset-demo
 ```
 
 API docs are served at `/api/docs`.

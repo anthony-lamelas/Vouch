@@ -537,10 +537,13 @@ def test_nudge_resets_stale_clock_and_messages_employee(client: TestClient, db: 
     assert after["messages"][-1]["body"].startswith("Quick nudge from Local Recruiter")
     assert after["events"][-1]["note"].startswith("Nudged")
 
-    waiting = db.scalars(
-        select(ReferralRequest).where(ReferralRequest.status == "requested")
-    ).first()
-    assert waiting is not None
+    # An unanswered ask can be nudged too, with a different message; a closed one cannot.
+    waiting = _fresh_request(client, db)
+    r = client.post(f"/api/requests/{waiting.id}/nudge")
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "requested"
+    assert "would you be up for reaching out" in r.json()["messages"][-1]["body"]
+    client.post(f"/api/requests/{waiting.id}/transition", json={"to_status": "closed", "note": "x"})
     assert client.post(f"/api/requests/{waiting.id}/nudge").status_code == 409
 
 
@@ -624,10 +627,15 @@ def test_stale_flag_after_seven_days(client: TestClient, db: Session) -> None:
     body = client.get(f"/api/requests/{req.id}").json()
     assert body["stale"] is True and body["days_waiting"] == 9
     accepted = accepted_events[0]
-    fresh = db.scalars(select(ReferralRequest).where(ReferralRequest.status == "requested")).first()
-    assert fresh is not None
-    assert client.get(f"/api/requests/{fresh.id}").json()["stale"] is False
     assert isinstance(accepted, ReferralEvent)
+    # A fresh ask is not stale; an ask nobody has answered for 9 days is.
+    fresh = _fresh_request(client, db)
+    assert client.get(f"/api/requests/{fresh.id}").json()["stale"] is False
+    for e in fresh.events:
+        e.created_at = datetime.now(UTC) - timedelta(days=9)
+    db.commit()
+    body = client.get(f"/api/requests/{fresh.id}").json()
+    assert body["stale"] is True and body["days_waiting"] == 9
 
 
 def test_pipeline_rows_carry_last_message(client: TestClient) -> None:

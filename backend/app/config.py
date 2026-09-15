@@ -1,14 +1,20 @@
 """Application settings, loaded from environment variables or a .env file."""
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # A .env in the repo root or in backend/ both work; the closer one wins.
+    model_config = SettingsConfigDict(
+        env_file=(str(_REPO_ROOT / ".env"), ".env"), env_file_encoding="utf-8", extra="ignore"
+    )
 
     app_env: Literal["local", "test", "production"] = "local"
     app_base_url: str = "http://localhost:8000"
@@ -35,10 +41,6 @@ class Settings(BaseSettings):
     )
 
     # LLM
-    anthropic_api_key: str = ""
-    anthropic_model: str = "claude-sonnet-5"
-    outreach_mode: Literal["template", "claude"] = "template"
-    reply_classifier_mode: Literal["keyword", "claude"] = "keyword"
 
     # Admin / seed
     admin_token: str = ""

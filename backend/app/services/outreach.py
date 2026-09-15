@@ -1,8 +1,7 @@
-"""Outreach drafting: deterministic templates by default, Claude behind a flag."""
+"""Outreach drafting: deterministic templates."""
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -142,63 +141,5 @@ class TemplateGenerator:
         )
 
 
-class ClaudeGenerator:
-    """Uses Claude to tailor both drafts; falls back to templates on any failure."""
-
-    name = "claude"
-
-    def __init__(self, api_key: str, model: str) -> None:
-        self._api_key = api_key
-        self._model = model
-        self._fallback = TemplateGenerator()
-
-    def generate(self, ctx: OutreachContext) -> Drafts:
-        try:
-            import anthropic
-
-            client = anthropic.Anthropic(api_key=self._api_key, timeout=8.0, max_retries=1)
-            prompt = (
-                "You write referral outreach for an employee at Cognition (maker of Devin). "
-                "Return JSON with keys 'casual' (a short DM, 2-4 sentences, warm, no emoji) "
-                "and 'formal' (an email with a Subject line, under 140 words). Mention the "
-                "shared history if given. Do not invent facts.\n\n"
-                + json.dumps(
-                    {
-                        "contact": {
-                            "name": ctx.contact_full_name,
-                            "title": ctx.contact_title,
-                            "company": ctx.contact_company,
-                        },
-                        "role": {
-                            "title": ctx.role_title,
-                            "team": ctx.role_team,
-                            "location": ctx.role_location,
-                            "url": ctx.role_url,
-                        },
-                        "employee_first_name": ctx.employee_first_name,
-                        "shared_history": ctx.shared_history,
-                        "fit_reasons": ctx.fit_reasons,
-                    }
-                )
-            )
-            message = client.messages.create(
-                model=self._model,
-                max_tokens=600,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            block = message.content[0]
-            raw = block.text if block.type == "text" else ""
-            start, end = raw.find("{"), raw.rfind("}")
-            data = json.loads(raw[start : end + 1])
-            casual, formal = str(data["casual"]).strip(), str(data["formal"]).strip()
-            if not casual or not formal:
-                raise ValueError("empty draft")
-            return Drafts(ask=draft_ask(ctx), casual=casual, formal=formal, generator=self.name)
-        except Exception:
-            return self._fallback.generate(ctx)
-
-
 def get_generator(settings: Settings) -> OutreachGenerator:
-    if settings.outreach_mode == "claude" and settings.anthropic_api_key:
-        return ClaudeGenerator(settings.anthropic_api_key, settings.anthropic_model)
     return TemplateGenerator()

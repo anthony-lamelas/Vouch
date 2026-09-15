@@ -56,8 +56,9 @@ DECLINE_LABELS: Final[dict[DeclineReason | None, str]] = {
 # Saying yes means the employee will reach out; the outcome states record what happened next.
 # A decline parks the request in EMPLOYEE_DECLINED with the employee's reason; the recruiter then
 # decides whether to ask another connected colleague (back to REQUESTED) or close it.
-# A request that sits in EMPLOYEE_ACCEPTED longer than STALE_AFTER_DAYS is flagged stale in the
-# UI (derived at read time, nothing stored) so the recruiter can nudge or close.
+# A request that sits in REQUESTED or EMPLOYEE_ACCEPTED longer than STALE_AFTER_DAYS is flagged
+# stale in the UI (derived at read time, nothing stored). The recruiter can nudge at any time;
+# stale is just when the sidebar starts asking them to.
 TRANSITIONS: Final[dict[Status, frozenset[Status]]] = {
     Status.REQUESTED: frozenset(
         {Status.EMPLOYEE_ACCEPTED, Status.EMPLOYEE_DECLINED, Status.CLOSED}
