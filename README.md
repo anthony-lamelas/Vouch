@@ -30,7 +30,7 @@ Backend (Python 3.12 via [uv](https://docs.astral.sh/uv/)):
 ```bash
 docker compose up -d db                     # just Postgres
 cd backend
-cp ../.env.example .env                     # AUTH_DISABLED=true is the default
+cp ../.env.example .env                     # Windows PowerShell: Copy-Item ..\.env.example .env
 uv sync --all-groups
 uv run alembic upgrade head
 uv run python -m app.cli seed               # ~20s: 40 employees, 3,000 contacts, roles, scores
@@ -53,6 +53,8 @@ pnpm dev                                    # http://localhost:5173, proxies /ap
 cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy app && uv run pytest
 cd frontend && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build
 ```
+
+Every command above is the same on macOS, Linux and Windows. The only Windows caveats: `&&` chaining needs PowerShell 7 or Command Prompt (Windows PowerShell 5.1 does not support it, so run the commands one per line there), and the tests need the Postgres container from `docker compose up -d db`.
 
 CI runs the same commands on every push, builds the Docker image, and deploys to Render only from a green `main`.
 
@@ -89,6 +91,7 @@ The happy path ends with the candidate booking a recruiter screen: when the empl
 uv run python -m app.cli seed             # wipe and reseed everything
 uv run python -m app.cli sync-roles       # pull the latest Ashby postings, recompute scores
 curl -X POST -H "X-Admin-Token: $ADMIN_TOKEN" https://<host>/api/admin/reset-demo
+# Windows PowerShell: curl.exe -X POST -H "X-Admin-Token: $env:ADMIN_TOKEN" https://<host>/api/admin/reset-demo
 ```
 
 API docs are served at `/api/docs`.
